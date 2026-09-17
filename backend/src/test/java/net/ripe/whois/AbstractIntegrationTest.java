@@ -95,12 +95,14 @@ public abstract class AbstractIntegrationTest {
                 "http://localhost:" + port + "/token");
         System.setProperty("spring.security.oauth2.client.provider.keycloak.user-info-uri",
                 "http://localhost:" + port + "/userinfo");
+        System.setProperty("sso.identity.keycloak.allow-insecure-http", "true");
         System.setProperty("server.servlet.session.timeout", "1h");
     }
 
     @AfterAll
     static void teardownJwks() {
         testJwksServer.stop();
+        System.clearProperty("sso.identity.keycloak.allow-insecure-http");
     }
 
     @BeforeAll

@@ -131,7 +131,7 @@ public class Application implements AsyncConfigurer {
 
     private String filterSensitiveValue(final String key, final String value) {
         //TODO: [MH] Remove in the future, for security reasons this is not being removed now
-        if (key.endsWith("password") || key.endsWith("key")) {
+        if (key.endsWith("password") || key.endsWith("key") || key.endsWith("secret")) {
             return "********";
         } else {
             return value;
