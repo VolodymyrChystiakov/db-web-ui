@@ -40,7 +40,7 @@ public class SsoIdentityController {
         if (!isAuthorized(suppliedApiKey)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return accountResponse(identityService.findByEmail(email));
+        return accountResponse(identityService.findByEmail(email), HttpStatus.NOT_FOUND);
     }
 
     @GetMapping(path = "/{uuid:.+}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -50,7 +50,7 @@ public class SsoIdentityController {
         if (!isAuthorized(suppliedApiKey)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return accountResponse(identityService.findByUuid(uuid));
+        return accountResponse(identityService.findByUuid(uuid), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(KeycloakIdentityService.InvalidIdentityInputException.class)
@@ -64,11 +64,12 @@ public class SsoIdentityController {
     }
 
     private ResponseEntity<SsoAccountResponse> accountResponse(
-            final Optional<KeycloakIdentityService.IdentityAccount> account) {
+            final Optional<KeycloakIdentityService.IdentityAccount> account,
+            final HttpStatus emptyStatus) {
         return account
                 .map(SsoAccountResponse::of)
                 .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseGet(() -> ResponseEntity.status(emptyStatus).build());
     }
 
     private boolean isAuthorized(final String suppliedApiKey) {

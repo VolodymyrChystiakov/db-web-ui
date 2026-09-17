@@ -70,12 +70,12 @@ class SsoIdentityControllerTest {
     }
 
     @Test
-    void unknownUuidReturnsNotFound() throws Exception {
+    void unknownUuidReturnsBadRequest() throws Exception {
         when(identityService.findByUuid(USER_UUID)).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/accounts/{uuid}", USER_UUID)
                         .header("ncc-internal-api-key", API_KEY))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
