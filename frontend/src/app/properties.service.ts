@@ -67,7 +67,7 @@ export class PropertiesService {
     public REQUEST_UPDATE_URL = '';
     public REST_SEARCH_URL = '';
     public RPKI_DASHBOARD_URL = '';
-    public SOURCE = 'RIPE';
+    public SOURCE = 'TEST';
     public DB_WEB_UI_BUILD_TIME = '00:00';
     // list of all ripe ncc mntners
     public RIPE_NCC_MNTNERS = [];

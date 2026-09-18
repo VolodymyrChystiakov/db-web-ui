@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class AccountCompatibilityService {
@@ -44,6 +45,26 @@ public class AccountCompatibilityService {
     public List<Map<String, Object>> getMaintainers() {
         final AuthenticatedOidcIdentityService.Identity identity = identityService.requireCurrentIdentity();
         return whoisInternalService.getSsoMaintainers(identity.uuid());
+    }
+
+    /**
+     * Resolves a browser-selected organisation only after checking the mapping
+     * for the authenticated Keycloak identity.  The mapping is account context;
+     * it never grants registry rights.
+     */
+    public String requireOrganisation(final String requestedOrganisationId) {
+        if (requestedOrganisationId == null || requestedOrganisationId.isBlank()) {
+            throw new InvalidResourceRequestException("organisation id is required");
+        }
+
+        final String organisationId = requestedOrganisationId.trim();
+        final AuthenticatedOidcIdentityService.Identity identity = identityService.requireCurrentIdentity();
+        return membershipRepository.findByKeycloakUuid(identity.uuid()).stream()
+                .map(AccountMembershipRepository.OrganisationMembership::orgObjectId)
+                .filter(Objects::nonNull)
+                .filter(organisationId::equals)
+                .findFirst()
+                .orElseThrow(() -> new OrganisationAccessDeniedException(organisationId));
     }
 
     private List<UserInfoResponse.Organisation> toOrganisations(

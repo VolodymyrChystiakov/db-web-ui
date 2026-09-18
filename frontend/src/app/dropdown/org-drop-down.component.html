@@ -14,15 +14,7 @@
             <div>
                 <span>{{ org.organisationName }}</span>
             </div>
-            @if (org.regId) {
-            <small
-                ><span>{{ org.regId }}</span></small
-            >
-            } @if (!org.regId) {
-            <small
-                ><span>{{ org.orgObjectId }}</span></small
-            >
-            }
+            <small><span>{{ org.orgObjectId }}</span></small>
         </ng-template>
     </ng-select>
 </div>

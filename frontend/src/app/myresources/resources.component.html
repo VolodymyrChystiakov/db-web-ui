@@ -1,33 +1,14 @@
 <section>
-    <h1>Overview</h1>
-    <br />
+    <h1>My Resources</h1>
     <div class="my-resources">
         <div class="header">
-            <mat-button-toggle-group [value]="activeToggleButton" (change)="resourcesSponsoredToggleClicked($event)">
-                <mat-button-toggle [value]="ResourceType.RESOURCES" [disableRipple]="true">{{ ResourceType.RESOURCES }}</mat-button-toggle>
-                @if (isMemberOrg()) {
-                <mat-button-toggle [value]="ResourceType.SPONSORED" [disableRipple]="true">{{ ResourceType.SPONSORED }}</mat-button-toggle>
-                }
-            </mat-button-toggle-group>
-            <div class="action-buttons">
-                @if (isMemberOrg()) {
-                <manage-resources [sponsoredMenu]="isShowingSponsored"></manage-resources>
-                <apikeys-dropdown [apiKeyType]="'MY_RESOURCES'"></apikeys-dropdown>
-                @if (!this.isShowingSponsored && lastTab !== 'aut-num') {
-                <button mat-flat-button color="primary" class="link-color" id="button-create-assignment" (click)="navigateToCreateAssignments()">
-                    {{ 'resource.createAssignment.text' | label }}
-                </button>
-                } }
-            </div>
-        </div>
-        <ip-usage-of-all-resources [resources]="lastTab === 'inetnum' ? ipv4Resources : ipv6Resources" [type]="lastTab" [sponsored]="isShowingSponsored">
-        </ip-usage-of-all-resources>
-        <div class="ipv4-ipv6-asn-tabs">
-            @if (showAlerts) {
-            <div class="bell-panel">
-                <alerts-drop-down [selectedOrganisation]="this.selectedOrg"></alerts-drop-down>
-            </div>
+            @if (lastTab !== 'aut-num') {
+            <button mat-flat-button color="primary" class="link-color" id="button-create-assignment" (click)="navigateToCreateAssignments()">
+                {{ 'resource.createAssignment.text' | label }}
+            </button>
             }
+        </div>
+        <div class="ipv4-ipv6-asn-tabs">
             <mat-tab-group
                 mat-stretch-tabs="false"
                 mat-align-tabs="start"
@@ -36,59 +17,35 @@
                 [selectedIndex]="lastTabIndex"
             >
                 <mat-tab label="IPv4" id="inetnum">
-                    @if (loading) {
-                    <loading-indicator class="resource-page-message"></loading-indicator>
-                    } @for (resource of ipv4Resources; track resource) {
-                    <div class="resource-list">
-                        <resource-item [item]="resource" [sponsored]="isShowingSponsored"></resource-item>
-                    </div>
-                    } @if (loading === false && ipv4Resources.length === 0) {
+                    @if (loading) { <loading-indicator class="resource-page-message"></loading-indicator> }
+                    @for (resource of ipv4Resources; track resource.resource) {
+                    <div class="resource-list"><resource-item [item]="resource"></resource-item></div>
+                    }
+                    @if (!loading && ipv4Resources.length === 0) {
                     <p class="resource-page-message">
-                        @if (fail) {
-                        <refresh reason="{{ reason.toString() }}" (refreshClbk)="refreshPage()"></refresh>
-                        } @else {
-                        <span class="resource-page-message">{{ reason.toString() }}</span>
-                        @if (!isMemberOrg()) {
-                        <span class="resource-page-message">{{ explanation.toString() }}</span>
-                        } }
+                        @if (fail) { <refresh reason="{{ reason }}" (refreshClbk)="refreshPage()"></refresh> } @else { {{ reason }} }
                     </p>
                     }
                 </mat-tab>
                 <mat-tab label="IPv6" id="inet6num">
-                    @if (loading) {
-                    <loading-indicator class="resource-page-message"></loading-indicator>
-                    } @for (resource of ipv6Resources; track resource) {
-                    <div class="resource-list">
-                        <resource-item [item]="resource" [sponsored]="isShowingSponsored"></resource-item>
-                    </div>
-                    } @if (loading === false && ipv6Resources.length === 0) {
+                    @if (loading) { <loading-indicator class="resource-page-message"></loading-indicator> }
+                    @for (resource of ipv6Resources; track resource.resource) {
+                    <div class="resource-list"><resource-item [item]="resource"></resource-item></div>
+                    }
+                    @if (!loading && ipv6Resources.length === 0) {
                     <p class="resource-page-message">
-                        @if (fail) {
-                        <refresh reason="{{ reason.toString() }}" (refreshClbk)="refreshPage()"></refresh>
-                        } @else {
-                        <span class="resource-page-message">{{ reason.toString() }}</span>
-                        @if (!isMemberOrg()) {
-                        <span class="resource-page-message">{{ explanation.toString() }}</span>
-                        } }
+                        @if (fail) { <refresh reason="{{ reason }}" (refreshClbk)="refreshPage()"></refresh> } @else { {{ reason }} }
                     </p>
                     }
                 </mat-tab>
                 <mat-tab label="ASN" id="aut-num">
-                    @if (loading) {
-                    <loading-indicator class="resource-page-message"></loading-indicator>
-                    } @for (resource of asnResources; track resource) {
-                    <div class="resource-list">
-                        <resource-item [item]="resource" [sponsored]="isShowingSponsored"></resource-item>
-                    </div>
-                    } @if (loading === false && asnResources.length === 0) {
+                    @if (loading) { <loading-indicator class="resource-page-message"></loading-indicator> }
+                    @for (resource of asnResources; track resource.resource) {
+                    <div class="resource-list"><resource-item [item]="resource"></resource-item></div>
+                    }
+                    @if (!loading && asnResources.length === 0) {
                     <p class="resource-page-message">
-                        @if (fail) {
-                        <refresh reason="{{ reason.toString() }}" (refreshClbk)="refreshPage()"></refresh>
-                        } @else {
-                        <span class="resource-page-message">{{ reason.toString() }}</span>
-                        @if (!isMemberOrg()) {
-                        <span class="resource-page-message">{{ explanation.toString() }}</span>
-                        } }
+                        @if (fail) { <refresh reason="{{ reason }}" (refreshClbk)="refreshPage()"></refresh> } @else { {{ reason }} }
                     </p>
                     }
                 </mat-tab>

@@ -1,109 +1,64 @@
 import { provideHttpClient, withInterceptorsFromDi, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { IResourceTickets } from '../../../src/app/myresources/resource-type.model';
 import { ResourcesDataService } from '../../../src/app/myresources/resources-data.service';
 
-const TEST_ORG_ID = 'ORG-ITEST-RIPE';
-
-const TEST_RESOURCE = '185.149.24.0%20-%20185.149.27.255';
-
-const responseResourceOverviewResponseModel = {
-    stats: {
-        numInetnums: 1,
-        numInet6nums: 1,
-        numAutnums: 3,
-        numSponsoredInetnums: 1,
-        numSponsoredInet6nums: 0,
-        numSponsoredAutnums: 0,
-    },
-    orgId: 'ORG-AL250-RIPE',
-    resources: [
-        {
-            type: 'inetnum',
-            resource: '185.62.164.0 - 185.62.167.255',
-            status: 'ALLOCATED PA',
-            netname: 'NETNAME-TEST30',
-            usage: {
-                total: 1024,
-                used: 512,
-                blockSize: 32,
-            },
-        },
-    ],
-    totalNumberOfResources: 1,
-    filteredSize: 1,
-    pageSize: 1,
-};
-
-const ticketAndDateResponse = {
-    tickets: {
-        '185.149.24.0 - 185.149.27.255': [
-            {
-                number: 'NCC#2016044085',
-                date: '2016-04-25',
-                resource: '185.149.24.0/22',
-            },
-        ],
-    },
-};
 describe('ResourcesDataService', () => {
     let resourcesDataService: ResourcesDataService;
     let httpMock: HttpTestingController;
 
     beforeEach(() => {
         TestBed.configureTestingModule({
-            imports: [],
-            providers: [
-                ResourcesDataService,
-                { provide: '$log', useValue: { info: () => {} } },
-                provideHttpClient(withXhr(), withInterceptorsFromDi()),
-                provideHttpClientTesting(),
-            ],
+            providers: [ResourcesDataService, provideHttpClient(withXhr(), withInterceptorsFromDi()), provideHttpClientTesting()],
         });
         httpMock = TestBed.inject(HttpTestingController);
         resourcesDataService = TestBed.inject(ResourcesDataService);
     });
 
-    afterEach(() => {
-        httpMock.verify();
+    afterEach(() => httpMock.verify());
+
+    it('loads the ASN list through the authenticated account compatibility endpoint', () => {
+        const response = {
+            filteredSize: 1,
+            resources: [{ resource: 'AS65000', type: 'aut-num', status: 'ASSIGNED', asname: 'ANRR-AS' }],
+        };
+        resourcesDataService.fetchResources('ORG-ANRR', 'aut-num').subscribe((result) => expect(result).toBe(response));
+
+        const request = httpMock.expectOne({ method: 'GET', url: 'api/user/resources?org-id=ORG-ANRR&type=aut-num' });
+        request.flush(response);
     });
 
-    it('should be created', () => {
-        expect(resourcesDataService).toBeTruthy();
-    });
-
-    it('should populate IPv4 Resources', () => {
-        resourcesDataService.fetchResources(TEST_ORG_ID, 'inetnum', false).subscribe((resp) => {
-            expect(resp).toBe(responseResourceOverviewResponseModel);
-        });
-        const req = httpMock.expectOne({ method: 'GET', url: 'api/whois-internal/api/resources?org-id=ORG-ITEST-RIPE&type=inetnum' });
-        expect(req.request.method).toBe('GET');
-        req.flush(responseResourceOverviewResponseModel);
-    });
-
-    it('should fetch tickets and dates', () => {
-        resourcesDataService.fetchTicketsAndDates(TEST_ORG_ID, TEST_RESOURCE).subscribe((response) => {
-            expect(response).toBe(ticketAndDateResponse);
-        });
-
-        const req = httpMock.expectOne({ method: 'GET', url: `api/ba-apps/resources/${TEST_ORG_ID}/${TEST_RESOURCE}` });
-        expect(req.request.method).toBe('GET');
-        req.flush(ticketAndDateResponse);
-    });
-
-    it('should catch and resolve exception when fetching tickets and dates', () => {
-        resourcesDataService.fetchTicketsAndDates(TEST_ORG_ID, TEST_RESOURCE).subscribe((response: IResourceTickets) => {
-            expect(response).toEqual({
-                tickets: {
-                    [TEST_RESOURCE]: [],
-                },
-            });
+    it('reads current object details from public TEST Whois and hides unsupported business attributes', () => {
+        resourcesDataService.fetchResource('AS65000', 'aut-num').subscribe((result) => {
+            expect(result.resources[0].resource).toBe('AS65000');
+            expect(result.resources[0].asname).toBe('ANRR-AS');
+            expect(result.object.source.id).toBe('test');
+            expect(result.object.attributes.attribute.some((attribute) => attribute.name === 'sponsoring-org')).toBeFalse();
         });
 
-        const req = httpMock.expectOne({ method: 'GET', url: `api/ba-apps/resources/${TEST_ORG_ID}/${TEST_RESOURCE}` });
-        req.error(null);
-
-        expect(req.request.method).toBe('GET');
+        const request = httpMock.expectOne((candidate) => candidate.url === 'api/whois/search');
+        expect(request.request.params.get('source')).toBe('TEST');
+        expect(request.request.params.get('query-string')).toBe('AS65000');
+        expect(request.request.params.get('flags')).toBe('B');
+        expect(request.request.params.getAll('type-filter')).toEqual(['aut-num']);
+        request.flush({
+            objects: {
+                object: [
+                    {
+                        type: 'aut-num',
+                        source: { id: 'test' },
+                        'primary-key': { attribute: [{ name: 'aut-num', value: 'AS65000' }] },
+                        attributes: {
+                            attribute: [
+                                { name: 'aut-num', value: 'AS65000' },
+                                { name: 'as-name', value: 'ANRR-AS' },
+                                { name: 'status', value: 'ASSIGNED' },
+                                { name: 'sponsoring-org', value: 'ORG-RIPE' },
+                            ],
+                        },
+                    },
+                ],
+            },
+        });
     });
 });

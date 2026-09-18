@@ -37,7 +37,7 @@ export class MenuService {
 
     setActiveMenu() {
         const url = this.router.url;
-        const activeMenu = ['myresources', 'ip-analyser'].some((id) => url.includes(id)) ? ActiveMenu.RESOURCES : ActiveMenu.DB;
+        const activeMenu = url.includes('myresources') ? ActiveMenu.RESOURCES : ActiveMenu.DB;
 
         this._activeMenu.set(activeMenu);
     }

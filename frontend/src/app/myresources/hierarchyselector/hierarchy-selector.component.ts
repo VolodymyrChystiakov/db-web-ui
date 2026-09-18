@@ -39,7 +39,6 @@ export class HierarchySelectorComponent implements OnChanges {
         const paramMap = this.activatedRoute.snapshot.paramMap;
         const params = {
             ipanalyserRedirect: paramMap.get('ipanalyserRedirect'),
-            sponsored: paramMap.get('sponsored'),
             type: this.resource.type,
         };
         void this.router.navigate(['myresources/overview'], { queryParams: params });
@@ -51,10 +50,8 @@ export class HierarchySelectorComponent implements OnChanges {
         }
         const paramMap = this.activatedRoute.snapshot.paramMap;
         const target = parent ? parent : this.parents[this.parents.length - 1];
-        const params = {
-            ipanalyserRedirect: paramMap.get('ipanalyserRedirect'),
-        };
-        void this.router.navigate(['myresources/detail', this.resource.type, target, paramMap.get('sponsored')], { queryParams: params });
+        const params = { ipanalyserRedirect: paramMap.get('ipanalyserRedirect') };
+        void this.router.navigate(['myresources/detail', this.resource.type, target], { queryParams: params });
     }
 
     private fetchParents(orgId: string): void {

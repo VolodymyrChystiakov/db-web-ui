@@ -40,7 +40,7 @@
                     @for (resource of moreSpecifics.resources; track resource) {
                     <tr class="break-all-word">
                         <td class="w30">
-                            <a class="link-color" [routerLink]="['/myresources/detail', resource.type, resource.resource, sponsored]">
+                            <a class="link-color" [routerLink]="['/myresources/detail', resource.type, resource.resource]">
                                 <name-formatter [name]="resource.resource" [type]="resource.type"></name-formatter>
                             </a>
                         </td>

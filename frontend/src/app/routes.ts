@@ -13,16 +13,6 @@ export const appRoutes: Routes = [
         canActivate: [AuthenticationGuard],
     },
     {
-        path: 'myresources/detail/:objectType/:objectName/:sponsored',
-        loadComponent: () => import('./myresources/resourcedetails/resource-details.component').then((m) => m.ResourceDetailsComponent),
-        canActivate: [AuthenticationGuard],
-    },
-    {
-        path: 'ip-analyser',
-        loadComponent: () => import('./ip-analyser/ip-analyser.component').then((m) => m.IpAnalyserComponent),
-        canActivate: [AuthenticationGuard],
-    },
-    {
         path: 'webupdates/wizard/:source/:objectType',
         loadComponent: () => import('./domainobject/domain-object-wizard.component').then((m) => m.DomainObjectWizardComponent),
         canActivate: [AuthenticationGuard],
@@ -93,16 +83,6 @@ export const appRoutes: Routes = [
         resolve: { data: queryFlagResolver },
     },
     {
-        path: 'api-keys/:apiKeyType',
-        loadComponent: () => import('./apikeys/api-keys.component').then((m) => m.ApiKeysComponent),
-        canActivate: [AuthenticationGuard],
-    },
-    {
-        path: 'api-keys',
-        loadComponent: () => import('./apikeys/api-keys.component').then((m) => m.ApiKeysComponent),
-        canActivate: [AuthenticationGuard],
-    },
-    {
         path: 'syncupdates',
         loadComponent: () => import('./syncupdates/syncupdates.component').then((m) => m.SyncupdatesComponent),
     },
@@ -132,34 +112,6 @@ export const appRoutes: Routes = [
     // syncupdates BETA was removed so redirect to syncupdates
     { path: 'textupdates/multiDecision', redirectTo: 'syncupdates', pathMatch: 'full' },
     { path: 'textupdates/multi', redirectTo: 'syncupdates', pathMatch: 'full' },
-    {
-        path: 'fmp',
-        loadComponent: () => import('./fmp/find-maintainer.component').then((m) => m.FindMaintainerComponent),
-    },
-    {
-        path: 'fmp/requireLogin',
-        loadComponent: () => import('./fmp/require-login.component').then((m) => m.RequireLoginComponent),
-    },
-    {
-        path: 'fmp/mailSent/:email',
-        loadComponent: () => import('./fmp/mail-sent.component').then((m) => m.MailSentComponent),
-    },
-    {
-        path: 'fmp/forgotMaintainerPassword',
-        loadComponent: () => import('./fmp/forgot-maintainer-password.component').then((m) => m.ForgotMaintainerPasswordComponent),
-    },
-    {
-        path: 'fmp/change-auth',
-        loadComponent: () => import('./fmp/forgot-maintainer-password.component').then((m) => m.ForgotMaintainerPasswordComponent),
-    },
-    {
-        path: 'fmp/ssoAdded/:mntnerKey/:user',
-        loadComponent: () => import('./fmp/sso-added.component').then((m) => m.SsoAddedComponent),
-    },
-    {
-        path: 'fmp/confirm',
-        loadComponent: () => import('./fmp/confirm-maintainer.component').then((m) => m.ConfirmMaintainerComponent),
-    },
     {
         path: 'legal',
         loadComponent: () => import('./footer-legal/legal.component').then((m) => m.LegalComponent),

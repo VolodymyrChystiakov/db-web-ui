@@ -26,7 +26,7 @@ export class OrgDropDownComponent implements OnInit {
 
     constructor() {
         this.userInfoService.userOrgsAndRoles$.subscribe((userInfo: UserOrgsAndRegistrations) => {
-            this.initOrgsAndMemebers(userInfo);
+            this.initOrganisations(userInfo);
         });
     }
 
@@ -38,7 +38,7 @@ export class OrgDropDownComponent implements OnInit {
                     if (!userInfo) {
                         return;
                     }
-                    this.initOrgsAndMemebers(userInfo);
+                    this.initOrganisations(userInfo);
                 },
                 error: (err: Error): void => {
                     console.warn('err', err);
@@ -57,8 +57,7 @@ export class OrgDropDownComponent implements OnInit {
         term = term.toLocaleLowerCase();
         return (
             item.organisationName.toLocaleLowerCase().includes(term) ||
-            (item.regId && item.regId.toLocaleLowerCase().includes(term)) ||
-            (!item.regId && item.orgObjectId && item.orgObjectId.toLocaleLowerCase().includes(term))
+            item.orgObjectId && item.orgObjectId.toLocaleLowerCase().includes(term)
         );
     }
 
@@ -68,22 +67,9 @@ export class OrgDropDownComponent implements OnInit {
         });
     }
 
-    private initOrgsAndMemebers(userInfo: UserOrgsAndRegistrations) {
-        const orgs: IUserInfoOrganisation[] = [];
-        const members: IUserInfoOrganisation[] = [];
-        if (Array.isArray(userInfo.organisations)) {
-            for (const org of userInfo.organisations) {
-                orgs.push(org);
-            }
-            this.sortOrganisations(orgs);
-        }
-        if (Array.isArray(userInfo.members)) {
-            for (const org of userInfo.members) {
-                members.push(org);
-            }
-            this.sortOrganisations(members);
-        }
-        this.organisations = members.concat(orgs);
+    private initOrganisations(userInfo: UserOrgsAndRegistrations) {
+        const organisations = Array.isArray(userInfo.organisations) ? [...userInfo.organisations] : [];
+        this.organisations = this.sortOrganisations(organisations);
         this.userInfoService.getSelectedOrganisation().subscribe((org: IUserInfoOrganisation) => {
             if (this.selectedOrg !== org) {
                 this.orgDropDownSharedService.setSelectedOrg(org);

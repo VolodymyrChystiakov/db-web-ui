@@ -4,76 +4,77 @@ import { TestBed } from '@angular/core/testing';
 import { AssociatedObjectsService } from '../../../src/app/myresources/associatedobjects/associated-objects.service';
 
 describe('AssociatedObjectsService', () => {
-    let associatedObjectsService: AssociatedObjectsService;
+    let service: AssociatedObjectsService;
     let httpMock: HttpTestingController;
 
     beforeEach(() => {
         TestBed.configureTestingModule({
-            imports: [],
             providers: [AssociatedObjectsService, provideHttpClient(withXhr(), withInterceptorsFromDi()), provideHttpClientTesting()],
         });
         httpMock = TestBed.inject(HttpTestingController);
-        associatedObjectsService = TestBed.inject(AssociatedObjectsService);
+        service = TestBed.inject(AssociatedObjectsService);
     });
 
-    describe('for route', () => {
-        it('should call API for associated route objects of inetnum', (done) => {
-            associatedObjectsService.getAssociatedObjects('route', '185.162.88.0%20-%20185.162.91.255', 'inetnum', 0, '').subscribe((res: any) => {
-                expect(res).toEqual({ resp: 'lol' });
-                done();
-            });
-            const req = httpMock.expectOne({
-                method: 'GET',
-                url: 'api/whois-internal/api/resources/inetnum/185.162.88.0%20-%20185.162.91.255/associated-route-objects.json?filter=&page=0',
-            });
-            expect(req.request.method).toBe('GET');
-            req.flush({ resp: 'lol' });
+    afterEach(() => httpMock.verify());
+
+    it('finds associated route and route6 objects by aut-num origin', () => {
+        service.getAssociatedObjects('route', 'AS65000', 'aut-num', 0, '').subscribe((result) => {
+            expect(result.totalNumberOfResources).toBe(2);
+            expect(result.associatedObjects.map((object: any) => object.origin)).toEqual(['AS65000', 'AS65000']);
         });
 
-        it('should call API for associated route objects of autnum', (done) => {
-            associatedObjectsService.getAssociatedObjects('route', 'AS44569', 'aut-num', 0, '').subscribe((res: any) => {
-                expect(res).toEqual({ resp: 'lol' });
-                done();
-            });
-            const req = httpMock.expectOne({
-                method: 'GET',
-                url: 'api/whois-internal/api/resources/aut-num/AS44569/associated-route-objects.json?filter=&page=0',
-            });
-            expect(req.request.method).toBe('GET');
-            req.flush({ resp: 'lol' });
+        const request = httpMock.expectOne((candidate) => candidate.url === 'api/whois/search');
+        expect(request.request.params.get('source')).toBe('TEST');
+        expect(request.request.params.get('flags')).toBe('rB');
+        expect(request.request.params.get('inverse-attribute')).toBe('origin');
+        expect(request.request.params.getAll('type-filter')).toEqual(['route', 'route6']);
+        request.flush({
+            objects: {
+                object: [
+                    {
+                        type: 'route',
+                        'primary-key': { attribute: [{ name: 'route', value: '192.0.2.0/24' }, { name: 'origin', value: 'AS65000' }] },
+                        attributes: {
+                            attribute: [{ name: 'route', value: '192.0.2.0/24' }, { name: 'origin', value: 'AS65000' }],
+                        },
+                    },
+                    {
+                        type: 'route6',
+                        'primary-key': { attribute: [{ name: 'route6', value: '2001:db8::/32' }, { name: 'origin', value: 'AS65000' }] },
+                        attributes: {
+                            attribute: [{ name: 'route6', value: '2001:db8::/32' }, { name: 'origin', value: 'AS65000' }],
+                        },
+                    },
+                ],
+            },
         });
     });
 
-    describe('for domain', () => {
-        it('should call API for associated domain objects of inet6num', (done) => {
-            associatedObjectsService.getAssociatedObjects('domain', '2001:67c:2334::/48', 'inet6num', 0, '').subscribe((res: any) => {
-                expect(res).toEqual({ resp: 'lol' });
-                done();
-            });
-            const req = httpMock.expectOne({
-                method: 'GET',
-                url: 'api/whois-internal/api/resources/inet6num/2001:67c:2334::/48/associated-domain-objects.json?filter=&page=0',
-            });
-            expect(req.request.method).toBe('GET');
-            req.flush({ resp: 'lol' });
+    it('finds associated reverse-domain objects for an IPv6 resource', () => {
+        service.getAssociatedObjects('domain', '2001:db8::/48', 'inet6num', 0, '').subscribe((result) => {
+            expect(result.associatedObjects[0].domain).toBe('8.b.d.0.1.0.0.2.ip6.arpa');
         });
 
-        it('should fail calling API for associated domain objects of aut-num', () => {
-            associatedObjectsService.getAssociatedObjects('domain', 'AS44569', 'aut-num', 0, '').subscribe({
-                next: () => {
-                    // NOT to be called
-                    expect(true).toBeFalse();
-                },
-                error: (error) => {
-                    expect(error.status).toBe(400);
-                },
-            });
-            const req = httpMock.expectOne({
-                method: 'GET',
-                url: 'api/whois-internal/api/resources/aut-num/AS44569/associated-domain-objects.json?filter=&page=0',
-            });
-            expect(req.request.method).toBe('GET');
-            req.flush('', { status: 400, statusText: 'Unexpected type aut-num' });
+        const request = httpMock.expectOne((candidate) => candidate.url === 'api/whois/search');
+        expect(request.request.params.get('source')).toBe('TEST');
+        expect(request.request.params.get('flags')).toBe('drM');
+        expect(request.request.params.getAll('type-filter')).toEqual(['domain']);
+        request.flush({
+            objects: {
+                object: [
+                    {
+                        type: 'domain',
+                        'primary-key': { attribute: [{ name: 'domain', value: '8.b.d.0.1.0.0.2.ip6.arpa' }] },
+                        attributes: { attribute: [] },
+                    },
+                ],
+            },
+        });
+    });
+
+    it('does not make a public query for unsupported aut-num domain associations', () => {
+        service.getAssociatedObjects('domain', 'AS65000', 'aut-num', 0, '').subscribe((result) => {
+            expect(result.associatedObjects).toEqual([]);
         });
     });
 });

@@ -3,12 +3,9 @@ import { ChangeDetectionStrategy, Component, OnDestroy, inject } from '@angular/
 import { MatButton } from '@angular/material/button';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { CookieService } from 'ngx-cookie-service';
 import { Subscription } from 'rxjs';
-import { IUserInfoOrganisation, IUserInfoRegistration } from '../../dropdown/org-data-type.model';
+import { IUserInfoOrganisation } from '../../dropdown/org-data-type.model';
 import { OrgDropDownSharedService } from '../../dropdown/org-drop-down-shared.service';
-import { Labels } from '../../label.constants';
-import { PropertiesService } from '../../properties.service';
 import { AlertsService } from '../../shared/alert/alerts.service';
 import { FlagComponent, IFlag } from '../../shared/flag/flag.component';
 import { LoadingIndicatorComponent } from '../../shared/loadingindicator/loading-indicator.component';
@@ -17,7 +14,6 @@ import { OverrideCredentialsService } from '../../shared/override-credentials-se
 import { WhoisResourcesService } from '../../shared/whois-resources.service';
 import { IAttributeModel, IWhoisObjectModel, IWhoisResponseModel } from '../../shared/whois-response-type.model';
 import { ITextObject } from '../../updatestext/text-create.component';
-import { MntnerService } from '../../updatesweb/mntner.service';
 import { ModalDeleteObjectComponent } from '../../updatesweb/modal-delete-object.component';
 import { PreferenceService } from '../../updatesweb/preference.service';
 import { RestService } from '../../updatesweb/rest.service';
@@ -25,14 +21,12 @@ import { MaintainersEditorComponent } from '../../whois-object/maintainers-edito
 import { WhoisObjectEditorComponent } from '../../whois-object/whois-object-editor.component';
 import { WhoisObjectTextEditorComponent } from '../../whois-object/whois-object-text-editor.component';
 import { WhoisObjectViewerComponent } from '../../whois-object/whois-object-viewer.component';
+import { AnrrWhoisSearchService } from '../anrr-whois-search.service';
 import { AssociatedObjectsComponent } from '../associatedobjects/associated-objects.component';
 import { HierarchySelectorComponent } from '../hierarchyselector/hierarchy-selector.component';
 import { HierarchySelectorService } from '../hierarchyselector/hierarchy-selector.service';
-import { IpUsageComponent } from '../ip-usage.component';
 import { MoreSpecificsComponent } from '../morespecifics/more-specifics.component';
 import { RefreshComponent } from '../refresh/refresh.component';
-import { ResourceStatusService } from '../resource-status.service';
-import { IResourceDetailsResponseModel, IResourceTickets } from '../resource-type.model';
 import { ResourcesDataService } from '../resources-data.service';
 
 @Component({
@@ -45,7 +39,6 @@ import { ResourcesDataService } from '../resources-data.service';
         FlagComponent,
         NgClass,
         HierarchySelectorComponent,
-        IpUsageComponent,
         MatButton,
         LoadingIndicatorComponent,
         WhoisObjectViewerComponent,
@@ -58,11 +51,7 @@ import { ResourcesDataService } from '../resources-data.service';
     ],
 })
 export class ResourceDetailsComponent implements OnDestroy {
-    private cookies = inject(CookieService);
     private modalService = inject(NgbModal);
-    private mntnerService = inject(MntnerService);
-    private properties = inject(PropertiesService);
-    private resourceStatusService = inject(ResourceStatusService);
     private resourcesDataService = inject(ResourcesDataService);
     private hierarchySelectorService = inject(HierarchySelectorService);
     private restService = inject(RestService);
@@ -75,77 +64,53 @@ export class ResourceDetailsComponent implements OnDestroy {
     private preferenceService = inject(PreferenceService);
 
     public whoisObject: IWhoisObjectModel;
-    public textObject: ITextObject = {
-        source: '',
-        type: '',
-    };
+    public textObject: ITextObject = { source: '', type: '' };
     public resource: any;
     public flags: IFlag[] = [];
-    public show: {
-        editor: boolean;
-        viewer: boolean;
-    };
-
-    public showUsage: boolean;
-
-    public sponsored = false;
+    public show: { editor: boolean; viewer: boolean };
     public isEditing = false;
     public isDeletable = false;
-    public isWebEditingMode = true; // alternative is text editor mode
-    public ipanalyserRedirect = false;
-    public loadingResource: boolean = false; // true until resources are loaded to tabs
-    public showRefreshButton: boolean = false;
-
-    private orgId: string;
+    public isWebEditingMode = true;
+    public loadingResource = false;
+    public showRefreshButton = false;
     public objectName: string;
     public objectType: string;
+    public source = AnrrWhoisSearchService.SOURCE;
 
-    public source: string;
-    private subscriptions: any[] = [];
+    private subscriptions: Subscription[] = [];
 
     constructor() {
         const router = this.router;
-
-        const orgSubs: Subscription = this.orgDropDownSharedService.selectedOrgChanged$.subscribe((selected: IUserInfoOrganisation) => {
-            const selectedId = this.cookies.get('activeMembershipId');
-            if (selected && selectedId) {
-                if (selectedId.indexOf('org:') === 0) {
-                    if ('org:' + selected.orgObjectId === selectedId) {
-                        return;
-                    }
-                } else if ((selected as IUserInfoRegistration).membershipId + '' === selectedId) {
-                    return;
-                }
+        let loadedOrganisation: string;
+        const organisationSubscription = this.orgDropDownSharedService.selectedOrgChanged$.subscribe((selected: IUserInfoOrganisation) => {
+            if (!loadedOrganisation) {
+                loadedOrganisation = selected?.orgObjectId;
+                return;
             }
-            void router.navigate(['myresources/overview']);
+            if (selected?.orgObjectId !== loadedOrganisation) {
+                void router.navigate(['myresources/overview']);
+            }
         });
-        const routeSubs = this.activatedRoute.params.subscribe(() => {
+        const routeSubscription = this.activatedRoute.params.subscribe(() => {
             this.isEditing = false;
             this.isDeletable = false;
             this.init();
         });
-        this.subscriptions.push(routeSubs);
-        this.subscriptions.push(orgSubs);
+        this.subscriptions.push(organisationSubscription, routeSubscription);
     }
 
     public ngOnDestroy() {
-        this.subscriptions.forEach((s) => s.unsubscribe());
+        this.subscriptions.forEach((subscription) => subscription.unsubscribe());
         this.alertsService.clearAlertMessages();
     }
 
     public init() {
         this.flags = [];
-        if (this.alertsService) {
-            this.alertsService.clearAlertMessages();
-        }
-        this.show = {
-            editor: false,
-            viewer: true,
-        };
+        this.alertsService.clearAlertMessages();
+        this.show = { editor: false, viewer: true };
         const paramMap = this.activatedRoute.snapshot.paramMap;
         this.textObject.name = this.objectName = decodeURIComponent(paramMap.get('objectName'));
         this.textObject.type = this.objectType = paramMap.get('objectType').toLowerCase();
-        this.sponsored = paramMap.get('sponsored') === 'true';
         const queryParamMap = this.activatedRoute.snapshot.queryParamMap;
         if (queryParamMap.has('alertMessage')) {
             this.alertsService.addGlobalInfo(queryParamMap.get('alertMessage'));
@@ -154,51 +119,20 @@ export class ResourceDetailsComponent implements OnDestroy {
         this.showRefreshButton = false;
 
         this.resourcesDataService.fetchResource(this.objectName, this.objectType).subscribe({
-            next: (response: IResourceDetailsResponseModel) => {
+            next: (response: any) => {
                 this.loadingResource = false;
                 this.showRefreshButton = false;
                 this.whoisObject = response.object;
-                this.textObject.source = this.source = this.whoisObject ? this.whoisObject.source.id : this.properties.SOURCE;
-                // should only be one
-                this.resource = response.resources[0]
-                    ? response.resources[0]
-                    : {
-                          orgName: '',
-                          resource: this.whoisObject['primary-key'].attribute[0].value,
-                          type: this.objectType,
-                      };
-                let hasRipeMaintainer = false;
+                this.source = this.whoisObject?.source?.id?.toUpperCase() ?? AnrrWhoisSearchService.SOURCE;
+                this.textObject.source = this.source;
+                this.resource = response.resources?.[0] ?? {
+                    resource: this.whoisObject['primary-key'].attribute[0].value,
+                    type: this.objectType,
+                };
                 for (const attr of this.whoisObject.attributes.attribute) {
-                    if (attr.name === 'status') {
+                    if (attr.name === 'status' || attr.name === 'netname' || attr.name === 'as-name') {
                         this.addFlag(attr.value, attr.name);
-                        this.showUsage = this.resource.usage && this.resourceStatusService.isResourceWithUsage(this.objectType, attr.value);
-                    } else if (attr.name === 'netname' || attr.name === 'as-name') {
-                        this.addFlag(attr.value, attr.name);
-                    } else if (attr.name === 'org') {
-                        this.orgId = attr.value;
-                    } else if (attr.name === 'mnt-by' && !hasRipeMaintainer) {
-                        if (this.mntnerService.isNccMntner(attr.value)) {
-                            hasRipeMaintainer = true;
-                        }
                     }
-                }
-                if (hasRipeMaintainer && typeof this.orgId === 'string' && !this.sponsored) {
-                    this.getTicketsAndDates();
-                }
-                if (!hasRipeMaintainer && response.notUnderContract) {
-                    this.addFlag(Labels['flag.noContract.text'], Labels['flag.noContract.title'], 'orange');
-                }
-                if (response.sponsoredByOther) {
-                    this.addFlag(Labels['flag.otherSponsor.text'], Labels['flag.otherSponsor.title'], 'orange');
-                }
-                if (response.sponsored) {
-                    this.addFlag(Labels['flag.sponsored.text'], Labels['flag.sponsored.title'], 'orange');
-                }
-                if (this.resource.iRR) {
-                    this.addFlag(Labels['flag.iRR.text'], Labels['flag.iRR.title'], 'green');
-                }
-                if (this.resource.rDNS) {
-                    this.addFlag(Labels['flag.rDNS.text'], Labels['flag.rDNS.title'], 'green');
                 }
             },
             error: () => {
@@ -210,20 +144,14 @@ export class ResourceDetailsComponent implements OnDestroy {
 
     public updateButtonClicked(modifiedWhoisObject: any): void {
         this.resetMessages();
-
         const attributesWithoutDates = modifiedWhoisObject.attributes.attribute.filter(
             (attr: IAttributeModel) => attr.name !== 'last-modified' && attr.name !== 'created',
         );
         const object = { objects: { object: [{ attributes: { attribute: attributesWithoutDates } }] } };
         const pKey = modifiedWhoisObject['primary-key'].attribute[0].value;
-
         this.restService.modifyObject(this.source, this.objectType, pKey, object, this.overrideCredentialsService.getOverrideForRestCall()).subscribe({
-            next: (response: IWhoisResponseModel) => {
-                this.onSubmitSuccess(response);
-            },
-            error: (response: any) => {
-                this.onSubmitError(response);
-            },
+            next: (response: IWhoisResponseModel) => this.onSubmitSuccess(response),
+            error: (response: any) => this.onSubmitError(response),
         });
         setTimeout(() => {
             this.show.viewer = !this.show.viewer;
@@ -245,7 +173,7 @@ export class ResourceDetailsComponent implements OnDestroy {
         this.isEditing = true;
         this.isDeletable = this.isDeletableResource();
         this.isWebEditingMode = this.preferenceService.isWebMode();
-        document.querySelector('#editortop').scrollIntoView();
+        document.querySelector('#editortop')?.scrollIntoView();
     }
 
     public hideObjectEditor() {
@@ -254,12 +182,12 @@ export class ResourceDetailsComponent implements OnDestroy {
         this.isDeletable = false;
     }
 
-    switchToTextMode() {
+    public switchToTextMode() {
         this.preferenceService.setTextMode();
         this.isWebEditingMode = false;
     }
 
-    switchToWebMode() {
+    public switchToWebMode() {
         this.preferenceService.setWebMode();
         this.isWebEditingMode = true;
     }
@@ -269,41 +197,29 @@ export class ResourceDetailsComponent implements OnDestroy {
     }
 
     public deleteClicked() {
-        const inputData = {
-            name: this.objectName,
-            objectType: this.objectType,
-            onCancelPath: '',
-            source: this.source,
-        };
+        const inputData = { name: this.objectName, objectType: this.objectType, onCancelPath: '', source: this.source };
         const modalRef = this.modalService.open(ModalDeleteObjectComponent);
         modalRef.componentInstance.inputData = inputData;
         modalRef.closed.subscribe(() => {
             const parent = this.hierarchySelectorService.getParent(this.objectName);
-            const params = {
-                alertMessage: `The ${this.objectType} for ${this.objectName} has been deleted`,
-            };
-            void this.router.navigate(['myresources/detail', this.objectType, parent, this.sponsored], { queryParams: params });
+            void this.router.navigate(['myresources/detail', this.objectType, parent], {
+                queryParams: { alertMessage: `The ${this.objectType} for ${this.objectName} has been deleted` },
+            });
         });
-        modalRef.dismissed.subscribe(() => {
-            void this.router.navigate(['myresources/detail', this.objectType, this.objectName, this.sponsored]);
-        });
+        modalRef.dismissed.subscribe(() => void this.router.navigate(['myresources/detail', this.objectType, this.objectName]));
     }
 
     private resetMessages() {
         this.alertsService.clearAlertMessages();
-        // explicitly clear errors on fields before submitting the form, should probably be done elsewhere
-        this.whoisObject.attributes.attribute.forEach((a) => {
-            a.$$error = '';
-            a.$$invalid = false;
+        this.whoisObject?.attributes?.attribute?.forEach((attribute) => {
+            attribute.$$error = '';
+            attribute.$$invalid = false;
         });
     }
 
     private onSubmitSuccess(whoisResources: IWhoisResponseModel): void {
         const results = whoisResources.objects.object;
-        results[0].attributes.attribute = results[0].attributes.attribute.map((attr) => ({
-            ...attr,
-            value: attr.value.trim(),
-        }));
+        results[0].attributes.attribute = results[0].attributes.attribute.map((attr) => ({ ...attr, value: attr.value.trim() }));
         if (results.length >= 1) {
             this.whoisObject = results[0];
         }
@@ -311,59 +227,36 @@ export class ResourceDetailsComponent implements OnDestroy {
         this.isDeletable = false;
         this.loadMessages(whoisResources);
         this.alertsService.addGlobalSuccesses('Your object has been successfully updated.');
-        document.querySelector('#editortop').scrollIntoView();
+        document.querySelector('#editortop')?.scrollIntoView();
     }
 
     private loadMessages(whoisResources: IWhoisResponseModel): void {
-        if (!whoisResources.errormessages || !whoisResources.errormessages.errormessage) {
-            return;
+        if (whoisResources?.errormessages?.errormessage) {
+            this.alertsService.addAlertMsgs(whoisResources);
         }
-        this.alertsService.addAlertMsgs(whoisResources);
     }
 
     private onSubmitError(whoisResources: { data: IWhoisResponseModel }): void {
-        const attributeErrors = whoisResources.data.errormessages.errormessage.filter((e) => e.attribute);
-        attributeErrors.forEach((e) => {
-            const attribute = this.whoisObject.attributes.attribute.find((a) => a.name === e.attribute.name && a.value === e.attribute.value);
-            attribute.$$error = WhoisResourcesService.readableError(e);
+        const attributeErrors = whoisResources.data.errormessages.errormessage.filter((error) => error.attribute);
+        attributeErrors.forEach((error) => {
+            const attribute = this.whoisObject.attributes.attribute.find((item) => item.name === error.attribute.name && item.value === error.attribute.value);
+            if (attribute) {
+                attribute.$$error = WhoisResourcesService.readableError(error);
+            }
         });
         this.loadMessages(whoisResources.data);
         if (this.alertsService.alerts.errors.length === 0) {
             this.alertsService.addGlobalError('Your object NOT updated, please review issues below');
         }
-        document.querySelector('#editortop').scrollIntoView();
+        document.querySelector('#editortop')?.scrollIntoView();
     }
 
     private addFlag(textOnFlag: string, tooltip: string, colour?: string) {
-        const flag: IFlag = {
-            colour,
-            tooltip,
-            text: textOnFlag,
-        };
+        const flag: IFlag = { colour, tooltip, text: textOnFlag };
         if (tooltip === 'status') {
             this.flags.unshift(flag);
         } else {
             this.flags.push(flag);
         }
-    }
-
-    // Flags iRR and rDNS have to be last flags
-    private moveFlagsIRRNRDNSOnEnd() {
-        const indexIRRFlag = this.flags.findIndex((flag) => flag.text === Labels['flag.iRR.text']);
-        this.flags = this.flags.concat(this.flags.splice(indexIRRFlag, 1));
-        const indexRDNSFlag = this.flags.findIndex((flag) => flag.text === Labels['flag.rDNS.text']);
-        this.flags = this.flags.concat(this.flags.splice(indexRDNSFlag, 1));
-    }
-
-    private getTicketsAndDates() {
-        this.resourcesDataService.fetchTicketsAndDates(this.orgId, this.objectName).subscribe((response: IResourceTickets) => {
-            if (response?.tickets !== undefined && response.tickets[this.objectName] !== undefined) {
-                for (const ticket of response.tickets[this.objectName]) {
-                    this.addFlag(ticket.date, 'Issue date for ' + ticket.resource);
-                    this.addFlag(ticket.number, 'Ticket number for ' + ticket.resource);
-                }
-                this.moveFlagsIRRNRDNSOnEnd();
-            }
-        });
     }
 }

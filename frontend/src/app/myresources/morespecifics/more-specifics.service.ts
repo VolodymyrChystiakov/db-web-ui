@@ -1,7 +1,7 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, throwError } from 'rxjs';
-import { IUsage } from '../resource-type.model';
+import { Observable, of, throwError } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { AnrrWhoisSearchService } from '../anrr-whois-search.service';
 
 export interface IMoreSpecificsApiResult {
     resources: IMoreSpecificResource[];
@@ -10,16 +10,16 @@ export interface IMoreSpecificsApiResult {
 }
 
 export interface IMoreSpecificResource {
-    netname: string;
+    netname?: string;
+    asname?: string;
     resource: string;
-    status: string;
+    status?: string;
     type: string;
-    usage: IUsage;
 }
 
 @Injectable({ providedIn: 'root' })
 export class MoreSpecificsService {
-    private http = inject(HttpClient);
+    private whoisSearchService = inject(AnrrWhoisSearchService);
 
     public getSpecifics(objectName: string, objectType: string, page: number, filter: string): Observable<IMoreSpecificsApiResult> {
         if (!objectType) {
@@ -29,7 +29,36 @@ export class MoreSpecificsService {
             return throwError(() => 'objectName is empty. more-specifics not available');
         }
         filter = filter ? filter.replace(/\s/g, '') : '';
-        const params = new HttpParams().set('filter', filter).set('page', String(page));
-        return this.http.get<IMoreSpecificsApiResult>(`api/whois-internal/api/resources/${objectType}/${objectName}/more-specifics.json`, { params });
+        if (objectType !== 'inetnum' && objectType !== 'inet6num') {
+            return of({ resources: [], totalNumberOfResources: 0, filteredSize: 0 });
+        }
+
+        const pageSize = 100;
+        return this.whoisSearchService.search(objectName, [objectType], 'M').pipe(
+            map((response) => {
+                const allResources = (response.objects?.object ?? []).map((object) => this.toResource(object));
+                const filteredResources = filter
+                    ? allResources.filter((resource) => `${resource.resource}${resource.netname ?? ''}${resource.asname ?? ''}`.toLowerCase().includes(filter.toLowerCase()))
+                    : allResources;
+                const start = page * pageSize;
+                return {
+                    resources: filteredResources.slice(start, start + pageSize),
+                    totalNumberOfResources: allResources.length,
+                    filteredSize: filteredResources.length,
+                };
+            }),
+        );
+    }
+
+    private toResource(object: any): IMoreSpecificResource {
+        const attributes = object.attributes?.attribute ?? [];
+        const value = (name: string) => attributes.find((attribute: any) => attribute.name === name)?.value;
+        return {
+            resource: object['primary-key']?.attribute?.[0]?.value ?? '',
+            type: object.type,
+            status: value('status'),
+            netname: value('netname'),
+            asname: value('as-name'),
+        };
     }
 }

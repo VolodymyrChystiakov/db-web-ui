@@ -64,4 +64,21 @@ class AccountCompatibilityServiceTest {
 
         assertThrows(AccountStoreUnavailableException.class, subject::getUserInfo);
     }
+
+    @Test
+    void organisationLookupIsLimitedToTheAuthenticatedUsersMappings() {
+        when(identityService.requireCurrentIdentity()).thenReturn(
+                new AuthenticatedOidcIdentityService.Identity(USER_UUID, "alice@example.com", "alice", "Alice Example"));
+        when(membershipRepository.findByKeycloakUuid(USER_UUID)).thenReturn(List.of(
+                new AccountMembershipRepository.OrganisationMembership("ORG-ONE-ANRR", "editor")));
+
+        assertEquals("ORG-ONE-ANRR", subject.requireOrganisation("ORG-ONE-ANRR"));
+        assertThrows(OrganisationAccessDeniedException.class, () -> subject.requireOrganisation("ORG-TWO-ANRR"));
+    }
+
+    @Test
+    void blankOrganisationIsRejectedBeforeAnyMappingLookup() {
+        assertThrows(InvalidResourceRequestException.class, () -> subject.requireOrganisation(" "));
+        verify(membershipRepository, org.mockito.Mockito.never()).findByKeycloakUuid(USER_UUID);
+    }
 }

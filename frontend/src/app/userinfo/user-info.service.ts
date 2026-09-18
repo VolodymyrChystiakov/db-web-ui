@@ -43,7 +43,7 @@ export class UserInfoService {
             return of(this.userInfo);
         } else {
             //send access token
-            return this.http.get('api/whois-internal/api/user/info').pipe(
+            return this.http.get('api/user/info').pipe(
                 timeout(30000),
                 share(),
                 map((response: UserOrgsAndRegistrations) => {
@@ -68,31 +68,15 @@ export class UserInfoService {
         return this.getUserOrgsAndRoles().pipe(
             map((userInfo: UserOrgsAndRegistrations) => {
                 if (storedSelectionId) {
-                    if (Array.isArray(userInfo.organisations)) {
-                        for (const org of userInfo.organisations) {
-                            if ('org:' + org.orgObjectId === storedSelectionId.toString()) {
-                                this.selectedOrganisation = org;
-                                break;
-                            }
-                        }
-                    }
-                    if (Array.isArray(userInfo.members)) {
-                        for (const org of userInfo.members) {
-                            if (org.membershipId.toString() === storedSelectionId.toString()) {
-                                this.selectedOrganisation = org;
-                                break;
-                            }
+                    for (const org of userInfo.organisations ?? []) {
+                        if ('org:' + org.orgObjectId === storedSelectionId.toString()) {
+                            this.selectedOrganisation = org;
+                            break;
                         }
                     }
                 }
                 if (!this.selectedOrganisation) {
-                    let orgs: IUserInfoOrganisation[] = [];
-                    if (userInfo.organisations) {
-                        orgs = orgs.concat(userInfo.organisations);
-                    }
-                    if (userInfo.members) {
-                        orgs = orgs.concat(userInfo.members);
-                    }
+                    const orgs: IUserInfoOrganisation[] = [...(userInfo.organisations ?? [])];
                     orgs.sort((o1, o2) => {
                         return o1.organisationName.localeCompare(o2.organisationName);
                     });
@@ -106,8 +90,8 @@ export class UserInfoService {
     setSelectedOrganisation(selected: any) {
         this.selectedOrganisation = selected;
         this.cookies.set(
-            'activeMembershipId',
-            selected.membershipId !== undefined ? selected.membershipId : 'org:' + selected.orgObjectId,
+            'activeOrganisationId',
+            'org:' + selected.orgObjectId,
             1,
             '/',
             '.ripe.net',
@@ -117,6 +101,6 @@ export class UserInfoService {
     }
 
     private getSelectedOrgFromCookie(): string {
-        return this.cookies.get('activeMembershipId');
+        return this.cookies.get('activeOrganisationId');
     }
 }

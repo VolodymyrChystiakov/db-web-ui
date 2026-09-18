@@ -62,8 +62,8 @@ interface ITicket {
 
 export interface IResourceOverviewResponseModel {
     filteredSize: number;
-    stats: any;
-    resources: any[];
+    stats?: any;
+    resources: IResourceScreenItem[];
 }
 
 export interface IResourceScreenItem {
@@ -71,13 +71,13 @@ export interface IResourceScreenItem {
     asname?: string;
     orgName?: string;
     resource: string;
-    status: string;
+    status?: string;
     type: string;
-    usage: IUsage;
-    noContract: boolean;
-    sponsoredByOther: boolean;
-    sponsored: boolean;
-    ipanalyserRedirect: boolean;
+    usage?: IUsage;
+    noContract?: boolean;
+    sponsoredByOther?: boolean;
+    sponsored?: boolean;
+    ipanalyserRedirect?: boolean;
     iRR?: boolean; // any related route(6)
     rDNS?: boolean; // any related domain object's
 }

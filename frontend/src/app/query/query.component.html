@@ -181,30 +181,6 @@
                     </a>
                 </div>
             </div>
-            <div class="card-info">
-                <div class="padding margin-bottom">
-                    <p>{{ properties.SOURCE === 'RIPE' ? 'Test' : 'RIPE' }} Database</p>
-                    @if (properties.SOURCE === 'RIPE') {
-                    <span>
-                        You can use this environment to learn and experiment with the RIPE Database. It uses a TEST source. Important: All changes are reverted
-                        every day at night.
-                    </span>
-                    } @if (properties.SOURCE !== 'RIPE') {
-                    <span>
-                        TEST environment is to learn and experiment with RIPE Database and all changes are reverted in the night. Switch to RIPE Database for
-                        live action.
-                    </span>
-                    }
-                    <p></p>
-                    <!-- Decided different color by design. This link will open same application while other not -->
-                    <a [href]="properties.QUERY_PAGE_LINK_TO_OTHER_DB" target="_blank" class="inner-link-color"
-                        >Go to {{ properties.SOURCE === 'RIPE' ? 'Test' : 'RIPE' }} Database <em class="fa-light fa-arrow-right"></em>
-                    </a>
-                </div>
-            </div>
-            <div class="card-info">
-                <certificate-info></certificate-info>
-            </div>
             @if (showsDocsLink) {
             <typeform-banner></typeform-banner>
             }

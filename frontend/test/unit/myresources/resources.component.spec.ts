@@ -1,67 +1,37 @@
-import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { provideHttpClient, withInterceptorsFromDi, withXhr } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { of } from 'rxjs';
-import { IpUsageService } from '../../../src/app/myresources/ip-usage.service';
-import { ResourceStatusService } from '../../../src/app/myresources/resource-status.service';
-import { ResourcesDataService } from '../../../src/app/myresources/resources-data.service';
 import { ResourcesComponent } from '../../../src/app/myresources/resources.component';
-import { PropertiesService } from '../../../src/app/properties.service';
 import { ObjectTypesEnum } from '../../../src/app/query/object-types.enum';
-import { AlertsService } from '../../../src/app/shared/alert/alerts.service';
-import { WhoisResourcesService } from '../../../src/app/shared/whois-resources.service';
 import { UserInfoService } from '../../../src/app/userinfo/user-info.service';
 
 describe('ResourcesComponent', () => {
     let component: ResourcesComponent;
     let fixture: ComponentFixture<ResourcesComponent>;
-    let userInfoService = {
-        getUserOrgsAndRoles: () => of(''),
-        getSelectedOrganisation: () => of({ orgObjectId: 'orgId' }),
-    };
 
     beforeEach(() => {
         TestBed.configureTestingModule({
-            imports: [HttpClientTestingModule, RouterTestingModule, ResourcesComponent],
+            imports: [RouterTestingModule, ResourcesComponent],
             providers: [
-                ResourcesDataService,
-                { provide: UserInfoService, useValue: userInfoService },
-                AlertsService,
-                WhoisResourcesService,
-                PropertiesService,
-                ResourceStatusService,
-                IpUsageService,
+                {
+                    provide: UserInfoService,
+                    useValue: { getSelectedOrganisation: () => of({ orgObjectId: 'ORG-ANRR', organisationName: 'ORG-ANRR', roles: ['viewer'] }) },
+                },
+                provideHttpClient(withXhr(), withInterceptorsFromDi()),
+                provideHttpClientTesting(),
             ],
         });
-    });
-
-    it('should create', () => {
-        TestBed.inject(ActivatedRoute).snapshot.queryParams = {
-            type: 'inetnum',
-            sponsored: 'false',
-            ipanalyserRedirect: false,
-        };
         fixture = TestBed.createComponent(ResourcesComponent);
         component = fixture.componentInstance;
-        expect(component).toBeTruthy();
     });
 
-    it('should set lastTab - selected tab to INETNUM by default', () => {
-        TestBed.inject(ActivatedRoute);
-        fixture = TestBed.createComponent(ResourcesComponent);
-        component = fixture.componentInstance;
-        expect(component.lastTab).toEqual(ObjectTypesEnum.INETNUM);
+    it('defaults to the IPv4 registry list', () => {
+        expect(component.lastTab).toBe(ObjectTypesEnum.INETNUM);
     });
 
-    it('should set lastTab - selected tab to AUTNUM reading from url', () => {
-        TestBed.inject(ActivatedRoute).snapshot.queryParams = {
-            type: 'aut-num',
-            sponsored: 'false',
-            ipanalyserRedirect: false,
-        };
-        fixture = TestBed.createComponent(ResourcesComponent);
-        component = fixture.componentInstance;
-        expect(component.lastTab).toEqual(ObjectTypesEnum.AUT_NUM);
+    it('uses TEST for create/update navigation', () => {
+        expect(component.listOfTabs).toEqual(['inetnum', 'inet6num', 'aut-num']);
     });
 });

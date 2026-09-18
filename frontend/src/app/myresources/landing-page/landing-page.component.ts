@@ -15,7 +15,7 @@ export class LandingPageComponent implements OnInit {
     private userInfoService = inject(UserInfoService);
 
     description: string =
-        'View and manage your IPv4, IPv6 and AS Numbers in one place. RIPE NCC members can view and manage their resources. Holders of Provider Independent (PI) assignments can also view their resources. \n\nTo access the Resources page, you need to have a RIPE NCC Access account. Each user needs their own personal account.';
+        'View registry resources linked to your selected organisation. Resource data and object details are read from authoritative TEST Whois.\n\nSign in with your Keycloak account to continue.';
     loggedIn: boolean;
 
     currentHref = `${window.location.origin}/db-web-ui/oauth2/authorization/keycloak?next=${window.location.href}`;

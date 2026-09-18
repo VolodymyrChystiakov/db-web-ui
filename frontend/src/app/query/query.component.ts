@@ -22,7 +22,6 @@ import { SearchFieldComponent } from '../shared/sreachfield/search-field.compone
 import { SubmittingAgreementComponent } from '../shared/submitting-agreement.component';
 import { IObjectMessageModel, IVersion, IWhoisObjectModel, IWhoisResponseModel } from '../shared/whois-response-type.model';
 import { AdvanceFilterPanelComponent } from './advance-filter-panel.component';
-import { CertificateInfoComponent } from './certificate-info.component';
 import { HierarchyFlagsPanelComponent } from './hierarchy-flags-panel.component';
 import { HierarchyFlagsService } from './hierarchy-flags.service';
 import { InverseLookupPanelComponent } from './inverse-lookup-panel.component';
@@ -82,7 +81,6 @@ export type ShareLink = {
         ScrollerDirective,
         LoadingIndicatorComponent,
         TemplateComponent,
-        CertificateInfoComponent,
         TypeformBannerComponent,
         WhoisVersionComponent,
         WebAppVersionComponent,

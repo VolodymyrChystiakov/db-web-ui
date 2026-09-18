@@ -1,36 +1,47 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { tap, timeout } from 'rxjs/operators';
+import { map, tap } from 'rxjs/operators';
+import { AnrrWhoisSearchService } from '../anrr-whois-search.service';
 import { IResourceModel } from '../resource-type.model';
 
 @Injectable({ providedIn: 'root' })
 export class HierarchySelectorService {
-    private http = inject(HttpClient);
+    private whoisSearchService = inject(AnrrWhoisSearchService);
 
-    private cashHierarchy: string[];
+    private cachedHierarchy: string[];
 
     public fetchParentResources(resource: IResourceModel, org: string): Observable<string[]> {
         if (!resource || !resource.resource || !resource.type) {
             console.error('Not a resource', resource);
             throw new TypeError('ResourcesDataService.fetchParentResource failed: not a resource');
         }
-        if (this.cashHierarchy && this.cashHierarchy.includes(resource.resource)) {
-            return of(this.cashHierarchy.splice(0, this.cashHierarchy.indexOf(resource.resource)));
+        if (this.cachedHierarchy && this.cachedHierarchy.includes(resource.resource)) {
+            return of(this.cachedHierarchy.slice(0, this.cachedHierarchy.indexOf(resource.resource)));
         }
-        const type = resource.type;
-        const key = resource.resource;
-        const params = new HttpParams().set('key', key).set('org', org).set('type', type);
-        return this.http.get<string[]>('api/whois/hierarchy/parents-of', { params }).pipe(
-            timeout(10000),
+        return this.whoisSearchService.search(resource.resource, [resource.type], 'rL').pipe(
+            map((response) => {
+                const objects = response.objects?.object ?? [];
+                const organisationIndex = objects.findIndex((object: any) =>
+                    (object.attributes?.attribute ?? []).some((attribute: any) => attribute.name === 'org' && attribute.value === org),
+                );
+                if (organisationIndex < 0) {
+                    return [];
+                }
+                const hierarchy = objects
+                    .slice(organisationIndex)
+                    .map((object: any) => object['primary-key']?.attribute?.[0]?.value)
+                    .filter((key: string) => !!key && key !== resource.resource);
+                this.cachedHierarchy = [...hierarchy, resource.resource];
+                return hierarchy;
+            }),
             tap({
-                next: (result: string[]) => (this.cashHierarchy = result),
+                next: (result: string[]) => (this.cachedHierarchy = [...result, resource.resource]),
                 error: (error: any) => console.error('hierarchy parents-of error:' + JSON.stringify(error)),
             }),
         );
     }
 
     public getParent(child: string): string {
-        return this.cashHierarchy[this.cashHierarchy.indexOf(child) - 1];
+        return this.cachedHierarchy?.[this.cachedHierarchy.indexOf(child) - 1];
     }
 }

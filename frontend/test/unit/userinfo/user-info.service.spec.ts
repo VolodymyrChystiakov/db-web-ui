@@ -2,7 +2,7 @@ import { provideHttpClient, withInterceptorsFromDi, withXhr } from '@angular/com
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { CookieService } from 'ngx-cookie-service';
-import { IUserInfoOrganisation, IUserInfoRegistration, UserOrgsAndRegistrations } from '../../../src/app/dropdown/org-data-type.model';
+import { IUserInfoOrganisation, UserOrgsAndRegistrations } from '../../../src/app/dropdown/org-data-type.model';
 import { UserInfoService } from '../../../src/app/userinfo/user-info.service';
 
 describe('UserInfoService', () => {
@@ -12,7 +12,6 @@ describe('UserInfoService', () => {
 
     beforeEach(() => {
         TestBed.configureTestingModule({
-            imports: [],
             providers: [UserInfoService, CookieService, provideHttpClient(withXhr(), withInterceptorsFromDi()), provideHttpClientTesting()],
         });
         httpMock = TestBed.inject(HttpTestingController);
@@ -21,84 +20,47 @@ describe('UserInfoService', () => {
         localStorage.clear();
     });
 
-    afterEach(() => {
-        httpMock.verify();
+    afterEach(() => httpMock.verify());
+
+    it('loads account context from the browser-facing identity endpoint', () => {
+        userInfoService.getUserOrgsAndRoles().subscribe((response) => expect(response).toBe(mockUserInfo));
+        const request = httpMock.expectOne({ method: 'GET', url: 'api/user/info' });
+        request.flush(mockUserInfo);
     });
 
-    it('should be created', () => {
-        expect(userInfoService).toBeTruthy();
-    });
-
-    it('should provide user info on success', () => {
-        userInfoService.getUserOrgsAndRoles().subscribe((respons: UserOrgsAndRegistrations) => {
-            expect(respons).toBe(mockUserInfo);
-        });
-        const req = httpMock.expectOne({ method: 'GET', url: 'api/whois-internal/api/user/info' });
-        expect(req.request.method).toBe('GET');
-        req.flush(mockUserInfo);
-    });
-
-    it('should not provide user-info on failure', () => {
+    it('fails closed when account context is unavailable', () => {
         userInfoService.getSelectedOrganisation().subscribe({
-            next: (result: IUserInfoOrganisation) => {
-                // NOT to be called
-                expect(true).toBeFalse();
-            },
-            error: (error) => {
-                expect(error.status).toBe(401);
-            },
+            next: () => fail('organisation selection must not succeed'),
+            error: (error) => expect(error.status).toBe(503),
         });
-        const req = httpMock.expectOne({ method: 'GET', url: 'api/whois-internal/api/user/info' });
-        expect(req.request.method).toBe('GET');
-        req.flush(null, { status: 401, statusText: '' });
+        const request = httpMock.expectOne({ method: 'GET', url: 'api/user/info' });
+        request.flush(null, { status: 503, statusText: 'Unavailable' });
     });
 
-    it('should handle illegal selectedOrg value from cookie', () => {
-        cookies.set('activeMembershipId', 'unparseableValue', 1, '/', '.ripe.net', true);
-        userInfoService.getSelectedOrganisation().subscribe((result: IUserInfoRegistration) => {
-            // first lir in the list should have been automatically selected:
-            expect(result.membershipId).toEqual('7347');
-        });
-        const req = httpMock.expectOne({ method: 'GET', url: 'api/whois-internal/api/user/info' });
-        expect(req.request.method).toBe('GET');
-        req.flush(mockUserInfo);
+    it('ignores a cookie for an organisation not mapped to the current user', () => {
+        cookies.set('activeOrganisationId', 'org:ORG-OTHER', 1, '/', '.ripe.net', true);
+        userInfoService.getSelectedOrganisation().subscribe((result) => expect(result.orgObjectId).toBe('ORG-ONE-ANRR'));
+        const request = httpMock.expectOne({ method: 'GET', url: 'api/user/info' });
+        request.flush(mockUserInfo);
     });
 
-    it('should preselect correct lir based on cookie activeMembershipId value', () => {
-        cookies.set('activeMembershipId', '3629', 1, '/', '.ripe.net', true);
-        userInfoService.getSelectedOrganisation().subscribe((result: IUserInfoOrganisation) => {
-            expect(result.organisationName).toBe('Internet Provider Test');
-        });
-        const req = httpMock.expectOne({ method: 'GET', url: 'api/whois-internal/api/user/info' });
-        expect(req.request.method).toBe('GET');
-        req.flush(mockUserInfo);
+    it('switches only between organisations returned for the current user', () => {
+        cookies.set('activeOrganisationId', 'org:ORG-TWO-ANRR', 1, '/', '.ripe.net', true);
+        userInfoService.getSelectedOrganisation().subscribe((result) => expect(result.orgObjectId).toBe('ORG-TWO-ANRR'));
+        const request = httpMock.expectOne({ method: 'GET', url: 'api/user/info' });
+        request.flush(mockUserInfo);
     });
 });
 
 export const mockUserInfo: UserOrgsAndRegistrations = {
     user: {
-        name: 'Test User',
-        email: '',
-        username: 'TSTADMINC-RIPE',
-        photo: '',
+        uuid: '8ffe29be-89ef-41c8-ba7f-0e1553a623e5',
+        displayName: 'Test User',
+        email: 'test@example.com',
+        username: 'test',
     },
-    members: [
-        {
-            membershipId: '7347',
-            regId: 'zz.example',
-            orgObjectId: 'ORG-TEST19-RIPE',
-            organisationName: 'Internet Provider Test',
-            roles: ['admin', 'general', 'generalMeeting', 'resources', 'certification', 'ticketing', 'billing', 'LIR'],
-            lir: true,
-        },
-        {
-            membershipId: '3629',
-            regId: 'nl.supertestorg',
-            orgObjectId: 'ORG-TEST23-RIPE',
-            organisationName: 'SUPERTESTORG bv',
-            roles: ['admin', 'general', 'generalMeeting', 'resources', 'certification', 'ticketing', 'billing', 'LIR'],
-            lir: true,
-        },
+    organisations: [
+        { orgObjectId: 'ORG-ONE-ANRR', organisationName: 'ORG-ONE-ANRR', roles: ['editor'] },
+        { orgObjectId: 'ORG-TWO-ANRR', organisationName: 'ORG-TWO-ANRR', roles: ['viewer'] },
     ],
-    organisations: [],
 };

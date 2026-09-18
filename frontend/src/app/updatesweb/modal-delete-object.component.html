@@ -49,12 +49,7 @@
     </div>
 
     <div class="modal-footer">
-        @if (showRoaMsg) {
-        <div class="modal-footer-info">
-            <em class="fa-light fa-circle-info"></em>
-            <div>There is an RPKI ROA for the same route. If you proceed to delete this route(6) object, you may want to delete the ROA as well.</div>
-        </div>
-        } @if (canBeDeleted) {
+        @if (canBeDeleted) {
         <div>
             <button id="btnConfirmDeleteObject" data-dismiss="modal" mat-flat-button color="warn" class="float-start" (click)="delete()">CONFIRM DELETE</button>
         </div>

@@ -22,9 +22,6 @@ export class MoreSpecificsComponent implements OnChanges {
     public objectType: string;
     @Input()
     public objectName: string;
-    @Input()
-    public sponsored: boolean;
-
     public moreSpecifics: IMoreSpecificsApiResult;
     public showScroller = true;
     public ipFilter: string;

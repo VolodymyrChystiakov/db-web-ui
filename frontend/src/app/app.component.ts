@@ -149,11 +149,7 @@ export class AppComponent implements OnInit, OnDestroy {
         } else if (event.detail.url.startsWith('http')) {
             window.open(event.detail.url, '_blank');
         } else {
-            if (event.detail.id === 'sponsored') {
-                void this.router.navigate([event.detail.url], { queryParams: { sponsored: true } });
-            } else {
-                void this.router.navigate([event.detail.url]);
-            }
+            void this.router.navigate([event.detail.url]);
         }
     }
 

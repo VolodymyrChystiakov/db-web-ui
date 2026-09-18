@@ -2,7 +2,7 @@ import { NgStyle, SlicePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input, OnChanges, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { PropertiesService } from '../../properties.service';
+import { AnrrWhoisSearchService } from '../anrr-whois-search.service';
 import { NameFormatterComponent } from '../../shared/name-formatter.component';
 import { TableScrollerDirective } from '../../shared/table-scroller.directive';
 import {
@@ -22,7 +22,6 @@ import {
 })
 export class AssociatedObjectsComponent implements OnChanges {
     private associatedObjectService = inject(AssociatedObjectsService);
-    private properties = inject(PropertiesService);
 
     @Input()
     public associatedType: string;
@@ -32,7 +31,7 @@ export class AssociatedObjectsComponent implements OnChanges {
     public objectName: string;
 
     public title: string;
-    public source: string = this.properties.SOURCE;
+    public source: string = AnrrWhoisSearchService.SOURCE;
     public resultObject: IAssociatedObjectApiResult;
     public resource: any;
     public canHaveAssociatedObjects: boolean;

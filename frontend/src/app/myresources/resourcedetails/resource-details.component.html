@@ -1,7 +1,5 @@
 <section class="resource-intro">
-    <h1>
-        <name-formatter [name]="objectName" [type]="objectType"></name-formatter>
-    </h1>
+    <h1><name-formatter [name]="objectName" [type]="objectType"></name-formatter></h1>
     <div class="flags-container">
         @for (flag of flags; track flag) {
         <flag [ngClass]="flag.colour" [tooltip]="flag.tooltip" [text]="flag.text" uppercase></flag>
@@ -9,17 +7,12 @@
     </div>
 </section>
 <section class="back-to-my-resources">
-    @if (resource) {
-    <hierarchy-selector [resource]="resource"> </hierarchy-selector>
-    }
+    @if (resource) { <hierarchy-selector [resource]="resource"></hierarchy-selector> }
 </section>
-@if (showUsage) {
-<ip-usage [type]="objectType" [usage]="resource.usage"></ip-usage>
-}
 
 <section class="db-object" id="editortop">
     <div class="align-center">
-        <h2 class="no-margin">Object in RIPE Database</h2>
+        <h2 class="no-margin">Object in TEST Whois</h2>
         @if (isEditing && isWebEditingMode) {
         <button mat-flat-button color="primary" id="btnEditInTextArea" class="float-end" (click)="switchToTextMode()">
             <span class="fa-light fa-pen-to-square"></span> EDIT IN TEXT AREA
@@ -30,14 +23,11 @@
         </button>
         }
     </div>
-    @if (loadingResource) {
-    <loading-indicator class="resource-page-message"></loading-indicator>
-    } @if (whoisObject && !showRefreshButton && !loadingResource) {
+    @if (loadingResource) { <loading-indicator class="resource-page-message"></loading-indicator> }
+    @if (whoisObject && !showRefreshButton && !loadingResource) {
     <div>
         @if (!isEditing) {
-        <div class="resultpane">
-            <whois-object-viewer [model]="whoisObject" (updateClicked)="showObjectEditor()"></whois-object-viewer>
-        </div>
+        <div class="resultpane"><whois-object-viewer [model]="whoisObject" (updateClicked)="showObjectEditor()"></whois-object-viewer></div>
         } @if (isEditing && isWebEditingMode) {
         <div>
             <maintainers-editor [whoisObject]="whoisObject" (authenticationFailedClbk)="hideObjectEditor()"></maintainers-editor>
@@ -61,31 +51,23 @@
         ></whois-object-text-editor>
         }
     </div>
-    } @if (showRefreshButton) {
-    <refresh reason="There was problem reading resource please try again" (refreshClbk)="init()"></refresh>
-    }
+    } @if (showRefreshButton) { <refresh reason="There was a problem reading the resource" (refreshClbk)="init()"></refresh> }
 </section>
 
 @if (!showRefreshButton && !loadingResource) {
 <div>
-    <more-specifics id="more-specifics" [objectType]="objectType" [objectName]="objectName" [sponsored]="sponsored"></more-specifics>
-
-    @if (resource?.iRR) {
+    <more-specifics id="more-specifics" [objectType]="objectType" [objectName]="objectName"></more-specifics>
     <associated-objects
         id="associated-route-objects"
-        title="Associated Route Objects"
         associatedType="route"
         [objectType]="objectType"
         [objectName]="objectName"
     ></associated-objects>
-    } @if (resource?.rDNS) {
     <associated-objects
         id="associated-domain-objects"
-        title="Associated Domain Objects"
         associatedType="domain"
         [objectType]="objectType"
         [objectName]="objectName"
     ></associated-objects>
-    }
 </div>
 }
