@@ -26,6 +26,8 @@ import static org.mockito.Mockito.when;
 @Import(OidcTestConfig.class)
 public class UserControllerIntegrationTest extends AbstractIntegrationTest {
 
+    private static final String USER_UUID = "8ffe29be-89ef-41c8-ba7f-0e1553a623e5";
+
     @Mock
     private OAuth2AuthenticationToken oAuth2AuthenticationToken;
     @Mock
@@ -40,7 +42,7 @@ public class UserControllerIntegrationTest extends AbstractIntegrationTest {
     @BeforeEach
     public void setup() throws IOException {
         keycloakIdPDummyService.registerUser("authorised",
-                new KeycloakIdPDummyService.FakeUser("ba-apps-user", "ba-apps@example.com", "idp-sid-ba-apps"));
+                new KeycloakIdPDummyService.FakeUser(USER_UUID, "ba-apps@example.com", "idp-sid-ba-apps"));
 
         when(oAuth2AuthenticationToken.getAuthorizedClientRegistrationId()).thenReturn("keycloak");
         when(authorizedClient.getAccessToken()).thenReturn(ACCESS_TOKEN);
@@ -49,8 +51,8 @@ public class UserControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     public void get_maintainers_success() {
-        mock("/api/user/info?clientIp=127.0.0.1", getResource("mock/user-info.json"));
-        mock("/api/user/7bc1fcd3-cba2-4fa1-b9d9-215caa9e3346/maintainers?clientIp=127.0.0.1", getResource("mock/user-info-maintainers.xml"), MediaType.APPLICATION_XML, HttpStatus.OK.value());
+        mock("/api/whois/search?inverse-attribute=auth&type-filter=mntner&query-string=SSO%20" + USER_UUID,
+                getResource("mock/user-info-maintainers.xml"), MediaType.APPLICATION_XML, HttpStatus.OK.value());
 
         final ResponseEntity<String> response = get("/db-web-ui/api/user/mntners", String.class);
 
@@ -66,8 +68,6 @@ public class UserControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     public void get_maintainers_invalid_token() {
-        mock("/api/user/info?clientIp=127.0.0.1", "", MediaType.APPLICATION_JSON, HttpStatus.UNAUTHORIZED.value());
-
         final ResponseEntity<String> response = get("/db-web-ui/api/user/mntners", String.class, invalidOAuth2Client());
 
         assertThat(response.getStatusCode(), is(HttpStatus.UNAUTHORIZED));

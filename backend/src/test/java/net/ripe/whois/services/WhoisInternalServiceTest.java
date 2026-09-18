@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -145,6 +146,25 @@ public class WhoisInternalServiceTest {
         assertEquals("[SSO]", response.get(2).get("auth").toString());
 
         assertEquals(3, response.size());
+    }
+
+    @Test
+    public void shouldFindSsoMaintainersByInverseAuthSearch() {
+        mockServer.expect(requestTo(MOCK_WHOIS_INTERNAL_URL
+                + "/api/whois/search?inverse-attribute=auth&type-filter=mntner&query-string=SSO%20" + USER_UUID))
+                .andExpect(org.springframework.test.web.client.match.MockRestRequestMatchers.header(
+                        WhoisServiceBase.API_KEY_HEADER, API_KEY))
+                .andExpect(org.springframework.test.web.client.match.MockRestRequestMatchers.header(
+                        HttpHeaders.ACCEPT, MediaType.APPLICATION_XML_VALUE))
+                .andRespond(withSuccess(VALID_XML_RESPONSE, MediaType.APPLICATION_XML));
+
+        List<Map<String, Object>> response = whoisInternalService.getSsoMaintainers(USER_UUID.toString());
+
+        mockServer.verify();
+        assertEquals(3, response.size());
+        assertEquals("mntner", response.get(0).get("type"));
+        assertEquals("TST18-MNT", response.get(0).get("key"));
+        assertEquals("[SSO]", response.get(0).get("auth").toString());
     }
 
     @Test

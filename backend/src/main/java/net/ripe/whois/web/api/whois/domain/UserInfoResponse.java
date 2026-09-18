@@ -11,6 +11,7 @@ public class UserInfoResponse {
     public static class User {
         public String username;
         public String uuid;
+        public String email;
         public boolean active;
         public String displayName;
     }

@@ -1,7 +1,9 @@
 package net.ripe.whois.web.api.whois;
 
 import jakarta.servlet.http.HttpServletRequest;
-import net.ripe.db.whois.api.rest.client.RestClientException;
+import net.ripe.whois.services.AccountCompatibilityService;
+import net.ripe.whois.services.AccountStoreUnavailableException;
+import net.ripe.whois.services.AuthenticatedOidcIdentityService;
 import net.ripe.whois.services.WhoisInternalService;
 import net.ripe.whois.web.api.ApiController;
 import org.slf4j.Logger;
@@ -32,10 +34,13 @@ public class WhoisInternalProxyController extends ApiController {
     private static final Logger LOGGER = LoggerFactory.getLogger(WhoisInternalProxyController.class);
 
     private final WhoisInternalService whoisInternalService;
+    private final AccountCompatibilityService accountCompatibilityService;
 
     @Autowired
-    public WhoisInternalProxyController(final WhoisInternalService whoisInternalService) {
+    public WhoisInternalProxyController(final WhoisInternalService whoisInternalService,
+                                        final AccountCompatibilityService accountCompatibilityService) {
         this.whoisInternalService = whoisInternalService;
+        this.accountCompatibilityService = accountCompatibilityService;
     }
 
     @GetMapping(path = "/public/lir/{orgId}/mntner", produces = { MediaType.APPLICATION_XML_VALUE, MediaType.APPLICATION_JSON_VALUE })
@@ -149,10 +154,13 @@ public class WhoisInternalProxyController extends ApiController {
 
     @GetMapping(value = "/api/user/info", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> whoisInternalUserInfo(final HttpServletRequest request) {
-        try{
-            return ResponseEntity.ok().body(whoisInternalService.getUserInfo(request.getRemoteAddr()));
-        } catch (RestClientException re){
-            return new ResponseEntity<>(re.getMessage(), HttpStatus.valueOf(re.getStatus()));
+        try {
+            return ResponseEntity.ok(accountCompatibilityService.getUserInfo());
+        } catch (AuthenticatedOidcIdentityService.UnauthenticatedException
+                 | AuthenticatedOidcIdentityService.InvalidIdentityException exception) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        } catch (AccountStoreUnavailableException exception) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
     }
 

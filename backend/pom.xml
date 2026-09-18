@@ -19,6 +19,7 @@
         <commons-io.version>2.21.0</commons-io.version>
         <commons-ip-math.version>1.32</commons-ip-math.version>
         <commons-lang3.version>3.17.0</commons-lang3.version>
+        <commons-validator.version>1.10.1</commons-validator.version>
         <dnsjava.version>3.6.2</dnsjava.version>
         <freemarker.version>2.3.34</freemarker.version>
         <google-guava.version>33.4.8-jre</google-guava.version>
@@ -40,6 +41,7 @@
         <maven.build.timestamp.format>yyyyMMddHHmmss</maven.build.timestamp.format>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
+        <mariadb.version>3.5.10</mariadb.version>
         <reflections.version>0.10.2</reflections.version>
         <sentry.version>8.33.0</sentry.version>
         <selenium.version>4.31.0</selenium.version>
@@ -123,6 +125,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-client</artifactId>
             <version>${spring-boot.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mariadb.jdbc</groupId>
+            <artifactId>mariadb-java-client</artifactId>
+            <version>${mariadb.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -277,6 +284,17 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>${commons-lang3.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-validator</groupId>
+            <artifactId>commons-validator</artifactId>
+            <version>${commons-validator.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>net.ripe.db</groupId>

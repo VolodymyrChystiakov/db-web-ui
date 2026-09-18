@@ -99,6 +99,54 @@ public class WhoisInternalService implements ExchangeErrorHandler, WhoisServiceB
 
     }
 
+    /**
+     * Find SSO maintainers using the authenticated user's stable identity.
+     * The UUID is supplied by the account compatibility service, never by the
+     * browser, and the request is made only to the configured internal Whois
+     * endpoint with the backend API key.
+     */
+    public List<Map<String, Object>> getSsoMaintainers(final String uuid) {
+        final URI uri = UriComponentsBuilder.fromHttpUrl(apiUrl)
+                .path("/api/whois/search")
+                .queryParam("inverse-attribute", "auth")
+                .queryParam("type-filter", "mntner")
+                .queryParam("query-string", "SSO " + uuid)
+                .build()
+                .encode()
+                .toUri();
+
+        final ResponseEntity<WhoisResources> response;
+        try {
+            response = restTemplate.exchange(
+                    uri,
+                    HttpMethod.GET,
+                    getRequestEntity(Optional.of(apiKey)),
+                    WhoisResources.class);
+        } catch (org.springframework.web.client.RestClientException exception) {
+            LOGGER.warn("Failed to retrieve SSO maintainers for UUID {} due to {}", uuid, exception.getMessage());
+            throw new RestClientException(exception);
+        }
+
+        if (response.getStatusCode() != HttpStatus.OK) {
+            throw new RestClientException(response.getStatusCode().value(), "Unable to get SSO maintainers");
+        }
+        if (!response.hasBody()) {
+            return Collections.emptyList();
+        }
+
+        return response.getBody().getWhoisObjects().stream()
+                .filter(object -> "mntner".equals(getObjectType(object)))
+                .map(obj -> {
+                    final Map<String, Object> objectSummary = Maps.newHashMap();
+                    objectSummary.put("key", getObjectSinglePrimaryKey(obj));
+                    objectSummary.put("type", getObjectType(obj));
+                    objectSummary.put(AttributeType.AUTH.getName(), getValuesForAttribute(obj, AttributeType.AUTH));
+                    objectSummary.put("mine", true);
+                    return objectSummary;
+                })
+                .toList();
+    }
+
     private HashMap<String, Object> withParams(final String uuid) {
         final HashMap<String, Object> variables = Maps.newHashMap();
         variables.put("apiUrl", apiUrl);

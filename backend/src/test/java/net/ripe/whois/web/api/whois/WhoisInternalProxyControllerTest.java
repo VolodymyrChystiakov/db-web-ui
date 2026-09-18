@@ -1,8 +1,10 @@
 package net.ripe.whois.web.api.whois;
 
 import jakarta.servlet.http.HttpServletRequest;
-import net.ripe.db.whois.api.rest.client.RestClientException;
 import net.ripe.whois.AbstractIntegrationTest;
+import net.ripe.whois.services.AccountCompatibilityService;
+import net.ripe.whois.services.AccountStoreUnavailableException;
+import net.ripe.whois.services.AuthenticatedOidcIdentityService;
 import net.ripe.whois.services.WhoisInternalService;
 import net.ripe.whois.web.api.whois.domain.UserInfoResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +35,8 @@ public class WhoisInternalProxyControllerTest {
     @Mock
     private WhoisInternalService whoisInternalService;
     @Mock
+    private AccountCompatibilityService accountCompatibilityService;
+    @Mock
     private OAuth2AuthenticationToken oAuth2AuthenticationToken;
 
     @InjectMocks
@@ -49,21 +53,29 @@ public class WhoisInternalProxyControllerTest {
     public void whoisInternalUserInfoMustReturnValue() {
         final UserInfoResponse mockedUserInfoData = AbstractIntegrationTest.getResource("mock/user-info.json", UserInfoResponse.class);
 
-        when(request.getRemoteAddr()).thenReturn("");
-        when(whoisInternalService.getUserInfo("")).thenReturn(mockedUserInfoData);
+        when(accountCompatibilityService.getUserInfo()).thenReturn(mockedUserInfoData);
 
         final ResponseEntity<?> response = subject.whoisInternalUserInfo(request);
 
-        verify(whoisInternalService, Mockito.times(1)).getUserInfo("");
+        verify(accountCompatibilityService, Mockito.times(1)).getUserInfo();
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(mockedUserInfoData, response.getBody());
     }
 
     @Test
-    public void whoisInternalUserInfoMustReturnUnauthorisedWhenTokenMissing() {
-        when(request.getRemoteAddr()).thenReturn("");
-        when(whoisInternalService.getUserInfo(""))
-                .thenThrow(new RestClientException(HttpStatus.UNAUTHORIZED.value(), "Unauthorized"));
+    public void whoisInternalUserInfoMustFailClosedWhenAccountStoreIsUnavailable() {
+        when(accountCompatibilityService.getUserInfo())
+                .thenThrow(new AccountStoreUnavailableException("down", new IllegalStateException()));
+
+        final ResponseEntity<?> response = subject.whoisInternalUserInfo(request);
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
+    }
+
+    @Test
+    public void whoisInternalUserInfoMustRejectMissingOidcIdentity() {
+        when(accountCompatibilityService.getUserInfo())
+                .thenThrow(new AuthenticatedOidcIdentityService.UnauthenticatedException());
 
         final ResponseEntity<?> response = subject.whoisInternalUserInfo(request);
 
