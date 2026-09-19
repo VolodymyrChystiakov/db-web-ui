@@ -53,9 +53,9 @@ describe('MenuService', () => {
     });
 
     it('should react to NavigationEnd events', () => {
-        currentUrl = '/ip-analyser';
+        currentUrl = '/myresources/overview';
 
-        routerEvents$.next(new NavigationEnd(1, '/ip-analyser', '/ip-analyser'));
+        routerEvents$.next(new NavigationEnd(1, '/myresources/overview', '/myresources/overview'));
 
         expect(service.isActiveResourcesMenu()).toBeTrue();
     });

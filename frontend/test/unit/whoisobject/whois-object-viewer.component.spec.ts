@@ -31,7 +31,6 @@ describe('WhoisObjectViewerComponent', () => {
                                 queryParams: {
                                     type: 'inetnum',
                                     sponsored: 'false',
-                                    ipanalyserRedirect: false,
                                 },
                             },
                         },
@@ -83,7 +82,6 @@ describe('WhoisObjectViewerComponent', () => {
                                 queryParams: {
                                     type: 'inetnum',
                                     sponsored: 'false',
-                                    ipanalyserRedirect: false,
                                 },
                             },
                         },

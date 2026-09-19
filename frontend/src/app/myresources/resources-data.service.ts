@@ -21,7 +21,7 @@ export class ResourcesDataService {
                 }
                 const resource = this.toResourceSummary(object);
                 return {
-                    object: this.withoutBusinessAttributes(object),
+                    object,
                     resources: [resource],
                     totalNumberOfResources: 1,
                     filteredSize: 1,
@@ -75,16 +75,6 @@ export class ResourcesDataService {
             status: value('status'),
             netname: value('netname'),
             asname: value('as-name'),
-        };
-    }
-
-    private withoutBusinessAttributes(object: IWhoisObjectModel): IWhoisObjectModel {
-        return {
-            ...object,
-            attributes: {
-                ...object.attributes,
-                attribute: (object.attributes?.attribute ?? []).filter((attribute) => attribute.name !== 'sponsoring-org'),
-            },
         };
     }
 }

@@ -77,7 +77,6 @@ export interface IResourceScreenItem {
     noContract?: boolean;
     sponsoredByOther?: boolean;
     sponsored?: boolean;
-    ipanalyserRedirect?: boolean;
     iRR?: boolean; // any related route(6)
     rDNS?: boolean; // any related domain object's
 }

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, Input, OnChanges, inject } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { NgbDropdown, NgbDropdownMenu, NgbDropdownToggle } from '@ng-bootstrap/ng-bootstrap';
 import { NameFormatterComponent } from '../../shared/name-formatter.component';
 import { UserInfoService } from '../../userinfo/user-info.service';
@@ -16,7 +16,6 @@ import { HierarchySelectorService } from './hierarchy-selector.service';
 export class HierarchySelectorComponent implements OnChanges {
     private hierarchySelectorService = inject(HierarchySelectorService);
     private userInfoService = inject(UserInfoService);
-    private activatedRoute = inject(ActivatedRoute);
     private router = inject(Router);
 
     public parents: string[];
@@ -36,22 +35,15 @@ export class HierarchySelectorComponent implements OnChanges {
     }
 
     public showTopLevelResources() {
-        const paramMap = this.activatedRoute.snapshot.paramMap;
-        const params = {
-            ipanalyserRedirect: paramMap.get('ipanalyserRedirect'),
-            type: this.resource.type,
-        };
-        void this.router.navigate(['myresources/overview'], { queryParams: params });
+        void this.router.navigate(['myresources/overview'], { queryParams: { type: this.resource.type } });
     }
 
     public takeMeBackHome(parent: string) {
         if (!parent && !(this.parents && this.parents.length)) {
             return this.showTopLevelResources();
         }
-        const paramMap = this.activatedRoute.snapshot.paramMap;
         const target = parent ? parent : this.parents[this.parents.length - 1];
-        const params = { ipanalyserRedirect: paramMap.get('ipanalyserRedirect') };
-        void this.router.navigate(['myresources/detail', this.resource.type, target], { queryParams: params });
+        void this.router.navigate(['myresources/detail', this.resource.type, target]);
     }
 
     private fetchParents(orgId: string): void {

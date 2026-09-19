@@ -64,6 +64,7 @@ export class ResourceDetailsComponent implements OnDestroy {
     private preferenceService = inject(PreferenceService);
 
     public whoisObject: IWhoisObjectModel;
+    public whoisObjectForDisplay: IWhoisObjectModel;
     public textObject: ITextObject = { source: '', type: '' };
     public resource: any;
     public flags: IFlag[] = [];
@@ -122,7 +123,7 @@ export class ResourceDetailsComponent implements OnDestroy {
             next: (response: any) => {
                 this.loadingResource = false;
                 this.showRefreshButton = false;
-                this.whoisObject = response.object;
+                this.setWhoisObject(response.object);
                 this.source = this.whoisObject?.source?.id?.toUpperCase() ?? AnrrWhoisSearchService.SOURCE;
                 this.textObject.source = this.source;
                 this.resource = response.resources?.[0] ?? {
@@ -221,7 +222,7 @@ export class ResourceDetailsComponent implements OnDestroy {
         const results = whoisResources.objects.object;
         results[0].attributes.attribute = results[0].attributes.attribute.map((attr) => ({ ...attr, value: attr.value.trim() }));
         if (results.length >= 1) {
-            this.whoisObject = results[0];
+            this.setWhoisObject(results[0]);
         }
         this.isEditing = false;
         this.isDeletable = false;
@@ -234,6 +235,19 @@ export class ResourceDetailsComponent implements OnDestroy {
         if (whoisResources?.errormessages?.errormessage) {
             this.alertsService.addAlertMsgs(whoisResources);
         }
+    }
+
+    private setWhoisObject(object: IWhoisObjectModel): void {
+        this.whoisObject = object;
+        this.whoisObjectForDisplay = {
+            ...object,
+            attributes: {
+                ...object.attributes,
+                attribute: (object.attributes?.attribute ?? [])
+                    .filter((attribute) => attribute.name !== 'sponsoring-org')
+                    .map((attribute) => ({ ...attribute })),
+            },
+        };
     }
 
     private onSubmitError(whoisResources: { data: IWhoisResponseModel }): void {

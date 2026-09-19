@@ -1,156 +1,138 @@
 import { ResourcesOverViewPage, ResourcesPage } from '../pages/resources.page';
 
-describe('Resources', () => {
+const user = {
+    uuid: '8ffe29be-89ef-41c8-ba7f-0e1553a623e5',
+    name: 'ANRR Test User',
+    displayName: 'ANRR Test User',
+    email: 'anrr-test@example.com',
+};
+
+const organisations = [
+    { orgObjectId: 'ORG-ANRR-ONE', organisationName: 'ANRR One', roles: ['editor'] },
+    { orgObjectId: 'ORG-ANRR-TWO', organisationName: 'ANRR Two', roles: ['editor'] },
+];
+
+type TestResource = { resource: string; type: string; status?: string; netname?: string; asname?: string };
+
+const inventory: Record<string, Record<string, TestResource[]>> = {
+    'ORG-ANRR-ONE': {
+        inetnum: [{ resource: '192.0.2.0 - 192.0.2.255', type: 'inetnum', status: 'ASSIGNED PI', netname: 'ANRR-V4' }],
+        inet6num: [{ resource: '2001:db8::/32', type: 'inet6num', status: 'ALLOCATED-BY-RIR', netname: 'ANRR-V6' }],
+        'aut-num': [{ resource: 'AS65000', type: 'aut-num', status: 'ASSIGNED', asname: 'ANRR-AS' }],
+    },
+    'ORG-ANRR-TWO': {
+        inetnum: [{ resource: '198.51.100.0 - 198.51.100.255', type: 'inetnum', status: 'ASSIGNED PI', netname: 'ANRR-OTHER' }],
+        inet6num: [],
+        'aut-num': [],
+    },
+};
+
+const detailKey = '192.0.2.0 - 192.0.2.255';
+const detailObject = {
+    type: 'inetnum',
+    source: { id: 'TEST' },
+    'primary-key': { attribute: [{ name: 'inetnum', value: detailKey }] },
+    attributes: {
+        attribute: [
+            { name: 'inetnum', value: detailKey },
+            { name: 'netname', value: 'ANRR-V4' },
+            { name: 'org', value: 'ORG-ANRR-ONE' },
+            { name: 'sponsoring-org', value: 'ORG-EXAMPLE' },
+            { name: 'remarks', value: 'original' },
+            { name: 'source', value: 'TEST' },
+        ],
+    },
+};
+
+function stubAccountAndWhois() {
+    cy.intercept('GET', '**/api/user-oidc/me', { statusCode: 200, body: user }).as('oidcIdentity');
+    cy.intercept('GET', '**/api/user/info', { statusCode: 200, body: { user, organisations } }).as('accountContext');
+    cy.intercept('GET', '**/api/user/mntners', { statusCode: 200, body: [] });
+    cy.intercept('GET', '**/api/user/resources*', (request) => {
+        const orgId = String(request.query['org-id']);
+        const type = String(request.query.type);
+        const resources = inventory[orgId]?.[type] ?? [];
+        request.reply({ statusCode: 200, body: { resources, totalNumberOfResources: resources.length, filteredSize: resources.length } });
+    }).as('resourceInventory');
+    cy.intercept('GET', '**/api/whois/search*', (request) => {
+        const isDetailLookup = String(request.query['query-string']) === detailKey && request.query.flags === 'B';
+        if (isDetailLookup) {
+            request.reply({ statusCode: 200, body: { objects: { object: [detailObject] } } });
+            return;
+        }
+        request.reply({ statusCode: 200, body: { objects: { object: [] } } });
+    }).as('publicWhois');
+}
+
+describe('ANRR My Resources', () => {
     let resourcesPage: ResourcesOverViewPage;
 
     beforeEach(() => {
+        stubAccountAndWhois();
         resourcesPage = new ResourcesPage().visitOverview();
+        cy.wait('@oidcIdentity');
+        cy.wait('@accountContext');
+        cy.wait('@resourceInventory');
     });
 
-    it('should show IPv4 resources for an LIR', () => {
-        resourcesPage
-            .expectActiveIPTabToBe('IPv4')
-            .expectResourcesSize(4)
-            .expectResourcesToContainText(0, '194.104.0.0/24')
-            .expectResourcesToContainHref(0, 'myresources/detail/INETNUM/194.104.0.0%20-%20194.104.0.255/false')
-            .expectResourcesToContainText(1, '194.171.0.0/16')
-            .expectResourcesToContainHref(1, 'myresources/detail/INETNUM/194.171.0.0%20-%20194.171.255.255/false')
-            .expectResourcesToContainText(2, '195.169.0.0/16')
-            .expectResourcesToContainHref(2, 'myresources/detail/INETNUM/195.169.0.0%20-%20195.169.255.255/false')
-            .expectResourcesToContainText(3, '192.87.0.0/16')
-            .expectResourcesToContainHref(3, 'myresources/detail/INETNUM/192.87.0.0%20-%20192.87.255.255/false');
+    it('limits organisation selection to account mappings and switches inventory by organisation', () => {
+        resourcesPage.clickOnOrganizationSelector().expectNumberOfOrganizations(2);
+        resourcesPage.expectOrganizationToContain(0, 'ANRR One').expectOrganizationToContain(1, 'ANRR Two');
+        cy.get('#organisation-selector .ng-dropdown-panel .ng-option:contains("ANRR Two")').click({ force: true });
+
+        cy.wait('@resourceInventory').then(({ request }) => {
+            expect(request.query['org-id']).to.equal('ORG-ANRR-TWO');
+        });
+        resourcesPage.expectResourcesSize(1).expectResourcesToContainText(0, '198.51.100.0/24');
+        cy.get('body').should('not.contain.text', '192.0.2.0/24');
     });
 
-    it('should show progressbar for IPv4 resources with status ALLOCATED PA', () => {
-        resourcesPage.expectResourcesToContainFlag(1, 'ALLOCATED PA').expectExistProgressBarOnResource(1, true);
+    it('shows IPv4, IPv6, and ASN inventory from the selected organisation', () => {
+        resourcesPage.expectResourcesSize(1).expectResourcesToContainText(0, '192.0.2.0/24');
+
+        resourcesPage.clickOnIPTab('IPv6');
+        cy.wait('@resourceInventory').then(({ request }) => expect(request.query.type).to.equal('inet6num'));
+        resourcesPage.expectResourcesSize(1).expectResourcesToContainText(0, '2001:db8::/32');
+
+        resourcesPage.clickOnIPTab('ASN');
+        cy.wait('@resourceInventory').then(({ request }) => expect(request.query.type).to.equal('aut-num'));
+        resourcesPage.expectResourcesSize(1).expectResourcesToContainText(0, 'AS65000');
     });
 
-    it('should hide progressbar for IPv4 resources with status ASSIGNED PI', () => {
-        resourcesPage.expectResourcesToContainFlag(0, 'ASSIGNED PI').expectExistProgressBarOnResource(0, false);
+    it('navigates to the current resource detail URL and reads the object from TEST Whois', () => {
+        cy.get('resource-item a.title')
+            .should('have.attr', 'href')
+            .and('include', '/myresources/detail/inetnum/192.0.2.0%20-%20192.0.2.255')
+            .and('not.include', '/false');
+        cy.get('resource-item a.title').click();
+
+        cy.url().should('include', '/myresources/detail/inetnum/192.0.2.0%20-%20192.0.2.255').and('not.include', '/false');
+        cy.wait('@publicWhois').then(({ request }) => {
+            expect(request.query.source).to.equal('TEST');
+            expect(request.query['type-filter']).to.equal('inetnum');
+        });
+        cy.get('whois-object-viewer').should('contain.text', 'remarks: original').and('not.contain.text', 'sponsoring-org');
     });
 
-    it('should show sponsored IPv4 resources', () => {
-        resourcesPage
-            .expectResourcesToggleBtnActiveToBe('My Resources')
-            .clickOnSponsoredResources()
-            .expectResourcesToggleBtnActiveToBe('Sponsored Resources')
-            .expectResourcesSize(42);
+    it('navigates to IPv4 creation in source TEST', () => {
+        resourcesPage.clickOnCreateAssignmentButton();
+        cy.url().should('include', '/webupdates/create/TEST/inetnum');
     });
 
-    it('should not show Sponsored Resources tab after switching to an enduser', () => {
-        resourcesPage
-            .expectResourcesTabSize(2)
-            .clickOnSponsoredResources()
-            .expectResourcesToggleBtnActiveToBe('Sponsored Resources')
-            .selectOrganization('ViTest organisation')
-            .expectResourcesToggleBtnActiveToBe('My Resources')
-            .expectResourcesTabSize(1)
-            .expectResourcesSize(1)
-            .selectOrganization('SUPERTESTORG')
-            .expectResourcesTabSize(2);
+    it('navigates to IPv6 creation in source TEST', () => {
+        resourcesPage.clickOnIPTab('IPv6');
+        cy.wait('@resourceInventory');
+        resourcesPage.clickOnCreateAssignmentButton();
+        cy.url().should('include', '/webupdates/create/TEST/inet6num');
     });
 
-    it('should not show Create assignment button after switching to an enduser', () => {
-        resourcesPage.selectOrganization('ViTest organisation').expectResourcesToggleBtnActiveToBe('My Resources').expectCreateAssignmentButtonToExist(false);
-    });
-
-    it('should show additional explanation if no resources for enduser', () => {
-        resourcesPage
-            .selectOrganization('ViTest organisation')
-            .clickOnIPTab('ASN')
-            .expectDescription('No resources found')
-            .expectDescription(
-                'If you hold Provider Independent (PI) resources through a sponsoring LIR and want to view them on this page, your maintainer must be registered in your organisation object in the RIPE Database.',
-            );
-    });
-
-    it('should show menu item Request resources in Menage resources button for selected LIR organisation', () => {
-        resourcesPage
-            .clickOnManageResourcesButton()
-            .expectManageResorcesOptionToContain(0, 'Transfer resources')
-            .expectManageResorcesOptionToContain(1, 'Request resources')
-            .clickOnSponsoredResources()
-            .clickOnManageResourcesButton()
-            .expectManageResorcesOptionToContain(0, 'Start sponsoring PI resources')
-            .expectManageResorcesOptionToContain(1, 'Stop sponsoring PI resources')
-            .expectManageResorcesOptionToContain(2, "Transfer customer's resources");
-    });
-
-    it('should hide Manage resources dropdown for selected not LIR organisation', () => {
-        resourcesPage
-            .selectOrganization('SwTest organisation')
-            .expectManageResourcesOptionToExist(false)
-            .selectOrganization('SUPERTESTORG')
-            .expectManageResourcesOptionToExist(true)
-            .clickOnManageResourcesButton()
-            .expectManageResorcesOptionToContain(0, 'Transfer resources')
-            .expectManageResorcesOptionToContain(1, 'Request resources');
-    });
-
-    it('should show Create assignment button on My Resources tab', () => {
-        resourcesPage.expectCreateAssignmentButtonToExist(true);
-    });
-
-    it('should navigate to create inetnum page on click button Create assignment', () => {
-        resourcesPage.expectCreateAssignmentButtonToExist(true).clickOnCreateAssignmentButton();
-        cy.expectCurrentUrlToContain('webupdates/create/RIPE/inetnum');
-    });
-
-    it('should navigate to create inet6num page on click button Create assignment', () => {
-        resourcesPage.clickOnIPTab('IPv6').expectCreateAssignmentButtonToExist(true).clickOnCreateAssignmentButton();
-        cy.expectCurrentUrlToContain('webupdates/create/RIPE/inet6num');
-    });
-
-    it('should not show Create assignment button on ASN tab', () => {
-        resourcesPage.clickOnIPTab('ASN').expectCreateAssignmentButtonToExist(false);
-    });
-
-    it('should not show Create assignment button on Sponsored Resources tab', () => {
-        resourcesPage.clickOnSponsoredResources().expectCreateAssignmentButtonToExist(false);
-    });
-
-    it('should show sponsored flag', () => {
-        resourcesPage.expectResourcesToContainFlag(3, 'Sponsored resource');
-    });
-
-    it('should show IRR and RDNS flags', () => {
-        resourcesPage
-            .expectResourcesToContainFlag(0, 'IRR')
-            .expectResourcesToContainFlag(0, 'rDNS')
-            .expectResourcesToContainFlag(1, 'rDNS')
-            .expectResourcesToContainFlag(2, 'IRR');
-    });
-
-    it('should show out of region (RIPE-NONAUTH) autnum', () => {
-        resourcesPage
-            .clickOnIPTab('ASN')
-            .expectResourcesSize(76)
-            // RIPE-NONAUTH item - aut-num which is out of region
-            .expectResourcesToContainFlag(75, 'OTHER');
-    });
-
-    it('should show ip usage for all IPv4 resources', () => {
-        resourcesPage
-            .expectUsageToExist(true)
-            .expectUsageToContain('Total Allocated', '3072')
-            .expectUsageToContain('Total Allocated Used', '2048')
-            .expectUsageToContain('Total Allocated Free', '1024');
-    });
-
-    it('should show ip usage for all IPv6 resources', () => {
-        resourcesPage
-            .clickOnIPTab('IPv6')
-            .expectUsageToExist(true)
-            .expectUsageToContain('Total Allocated Subnets', '64K')
-            .expectUsageToContain('Total Allocated Subnets Used', '0')
-            .expectUsageToContain('Total Allocated Subnets Free', '64K');
-    });
-
-    it('should show ip usage for asn', () => {
-        resourcesPage.clickOnIPTab('ASN').expectUsageToExist(false);
-    });
-
-    it('should not show ip usage for sponsored tabs', () => {
-        resourcesPage.clickOnSponsoredResources().expectUsageToExist(false);
+    it('does not expose removed RIPE-only resource products or business fields', () => {
+        cy.get('body')
+            .should('not.contain.text', 'Sponsored Resources')
+            .and('not.contain.text', 'IP Analyser')
+            .and('not.contain.text', 'API Keys')
+            .and('not.contain.text', 'sponsoring-org')
+            .and('not.contain.text', 'LIR');
+        cy.get('manage-resources, ip-usage, .resources-ip-usage').should('not.exist');
     });
 });

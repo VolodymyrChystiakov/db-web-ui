@@ -28,35 +28,33 @@ describe('ResourcesDataService', () => {
         request.flush(response);
     });
 
-    it('reads current object details from public TEST Whois and hides unsupported business attributes', () => {
-        resourcesDataService.fetchResource('AS65000', 'aut-num').subscribe((result) => {
-            expect(result.resources[0].resource).toBe('AS65000');
-            expect(result.resources[0].asname).toBe('ANRR-AS');
-            expect(result.object.source.id).toBe('test');
-            expect(result.object.attributes.attribute.some((attribute) => attribute.name === 'sponsoring-org')).toBeFalse();
+    it('keeps the complete authoritative object returned by public TEST Whois', () => {
+        const whoisObject = {
+            type: 'inetnum',
+            source: { id: 'test' },
+            'primary-key': { attribute: [{ name: 'inetnum', value: '192.0.2.0 - 192.0.2.255' }] },
+            attributes: {
+                attribute: [
+                    { name: 'inetnum', value: '192.0.2.0 - 192.0.2.255' },
+                    { name: 'sponsoring-org', value: 'ORG-EXAMPLE' },
+                    { name: 'remarks', value: 'original' },
+                ],
+            },
+        };
+        resourcesDataService.fetchResource('192.0.2.0 - 192.0.2.255', 'inetnum').subscribe((result) => {
+            expect(result.object).toEqual(whoisObject);
+            expect(result.object.attributes.attribute).toEqual(whoisObject.attributes.attribute);
         });
 
         const request = httpMock.expectOne((candidate) => candidate.url === 'api/whois/search');
         expect(request.request.params.get('source')).toBe('TEST');
-        expect(request.request.params.get('query-string')).toBe('AS65000');
+        expect(request.request.params.get('query-string')).toBe('192.0.2.0 - 192.0.2.255');
         expect(request.request.params.get('flags')).toBe('B');
-        expect(request.request.params.getAll('type-filter')).toEqual(['aut-num']);
+        expect(request.request.params.getAll('type-filter')).toEqual(['inetnum']);
         request.flush({
             objects: {
                 object: [
-                    {
-                        type: 'aut-num',
-                        source: { id: 'test' },
-                        'primary-key': { attribute: [{ name: 'aut-num', value: 'AS65000' }] },
-                        attributes: {
-                            attribute: [
-                                { name: 'aut-num', value: 'AS65000' },
-                                { name: 'as-name', value: 'ANRR-AS' },
-                                { name: 'status', value: 'ASSIGNED' },
-                                { name: 'sponsoring-org', value: 'ORG-RIPE' },
-                            ],
-                        },
-                    },
+                    whoisObject,
                 ],
             },
         });

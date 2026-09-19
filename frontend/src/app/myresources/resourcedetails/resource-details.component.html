@@ -27,7 +27,7 @@
     @if (whoisObject && !showRefreshButton && !loadingResource) {
     <div>
         @if (!isEditing) {
-        <div class="resultpane"><whois-object-viewer [model]="whoisObject" (updateClicked)="showObjectEditor()"></whois-object-viewer></div>
+        <div class="resultpane"><whois-object-viewer [model]="whoisObjectForDisplay" (updateClicked)="showObjectEditor()"></whois-object-viewer></div>
         } @if (isEditing && isWebEditingMode) {
         <div>
             <maintainers-editor [whoisObject]="whoisObject" (authenticationFailedClbk)="hideObjectEditor()"></maintainers-editor>
